@@ -17,7 +17,7 @@ function pipeline(
 ): Scene {
   const entities: Record<string, Entity> = {
     workers: SENSORS,
-    ingest: db(20, 0, { label: 'ingest API', icon: 'server', sub: 'append only' }),
+    ingest: db(18, 0, { label: 'ingest API', icon: 'server', sub: 'append only' }),
     ...(engine === 'btree'
       ? {
           store: db(38, 0, {
@@ -28,8 +28,8 @@ function pipeline(
           }),
         }
       : {
-          mem: cache(34, -12, { label: 'memtable', sub: 'sorted RAM buffer', ...(o.look?.mem ?? {}) }),
-          levels: stack(38, 6, {
+          mem: cache(36, -17, { label: 'memtable', sub: 'sorted RAM buffer', ...(o.look?.mem ?? {}) }),
+          levels: stack(36, 16, {
             label: 'SSTable levels',
             sub: 'L0 → L2',
             count: o.stackLayers ?? 4,
@@ -45,18 +45,12 @@ function pipeline(
       ? { is: link('ingest', 'store', { arrow: true }) }
       : {
           im: link('ingest', 'mem', { arrow: true }),
-          ml: link('mem', 'levels', { arrow: true, curve: 0.1 }),
+          ml: link('mem', 'levels', { arrow: true }),
         }),
     ...o.links,
   };
 
-  const routes =
-    engine === 'btree'
-      ? [['wi', 'is'] as string[]]
-      : [
-          ['wi', 'im'] as string[],
-          ['im', 'ml'] as string[],
-        ];
+  const routes = engine === 'btree' ? [['wi', 'is'] as string[]] : [['wi', 'im'] as string[]];
 
   const flows: Flow[] = o.flows ?? [...spread(routes, 3.2, { kind: 'write', bounce: true, returnKind: 'res' })];
 
@@ -188,7 +182,7 @@ export const storageEngines: Lesson = {
       scene: pipeline('lsm', {
         stackLayers: 4,
         look: { levels: { badge: { text: 'compacting', tone: 'info' } } },
-        extra: { card: card(22, -18, 'Compaction', ['pick L0 files', 'merge sort keys', '! delete inputs']) },
+        extra: { card: card(10, -22, 'Compaction', ['pick L0 files', 'merge sort keys', '! delete inputs']) },
         flows: [{ route: ['im', 'ml'], kind: 'write', rate: 0.6, bounce: true }],
       }),
     },
