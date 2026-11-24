@@ -120,6 +120,12 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'insight', text: 'Round-trip time (RTT) is the unit of network latency. Count the round trips, then multiply.' },
       changes: ['+ DNS answer cached for 5 minutes', '+ TCP + TLS handshake: 2 round trips of 30 ms'],
+      predict: {
+        question: 'The server is 30 ms away (one round trip). Before the browser can send its request, it must open a secure connection. How long does that take?',
+        options: ['Almost nothing — it is just a few tiny messages', '30 ms — one round trip', '60 ms — two round trips', '300 ms — encryption is slow'],
+        answer: 2,
+        explain: 'TCP needs one round trip and TLS 1.3 one more. The messages are tiny, so bandwidth does not matter: each one waits a full round trip.',
+      },
       metrics: { connect: '60 ms' },
       scene: trip({
         db: false,
@@ -154,6 +160,19 @@ export const requestLifecycle: Lesson = {
         'Notice how small these numbers are next to the network: about 25 ms of work, with the CPU barely busy. A typical request spends more time travelling than being worked on — as long as the server does a sensible amount of work.',
       ],
       changes: ['+ 3 queries inside the data centre, ~25 ms of work'],
+      chaos: {
+        db: {
+          text: 'The web server still answers, but it cannot build the article without its data. Readers get an error page — or wait for a timeout if the server keeps trying. One dependency down takes this page down.',
+          metrics: { server: { v: '500 error', tone: 'bad' }, total: { v: 'error page', tone: 'bad' } },
+        },
+        web: {
+          text: 'DNS still points at <code>203.0.113.7</code>, but nothing answers there. The browser waits for the connection until it gives up. With one server, one failure means the whole site is down — Module 02 puts several servers behind one address.',
+          metrics: { connect: { v: 'timeout', tone: 'bad' }, total: { v: 'site down', tone: 'bad' } },
+        },
+        resolver: {
+          text: 'Nothing happens — yet. The browser already has the address, cached for 5 minutes. When that TTL runs out, new visitors cannot find the site even though the server is healthy.',
+        },
+      },
       metrics: { server: '55 ms' },
       scene: trip({
         web: CPU(0.2),
@@ -210,6 +229,12 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'warning', text: 'Measure before optimising. When the network is fine but the server column grows, count the queries before buying hardware.' },
       changes: ['+ comments load each author separately: 40 extra queries', '~ server CPU drops — it is waiting, not working'],
+      predict: {
+        question: 'Popular articles now run 40 extra database queries, one per comment author. What happens to the web server’s CPU?',
+        options: ['It climbs towards 100%', 'It stays about the same', 'It drops — the server mostly waits'],
+        answer: 2,
+        explain: 'Each query is a round trip to the database. While it waits for answers the CPU has little to do, so the page gets slower while the server looks idle.',
+      },
       metrics: { server: { v: '440 ms', tone: 'bad' }, total: { v: '785 ms', tone: 'bad' } },
       scene: trip({
         web: CPU(0.15),
@@ -232,6 +257,12 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'insight', text: 'Latency has two big sources: work on the server and distance on the network. They need different fixes.' },
       changes: ['+ a reader with a 300 ms round trip', '~ N+1 fixed: server work is back to normal', '~ every round trip costs 10× more'],
+      predict: {
+        question: 'Assume the N+1 problem is fixed. A reader on another continent has a 300 ms round trip instead of 30 ms. Roughly when does their page finish?',
+        options: ['~0.4 s, same as everyone', '~0.7 s', '~2 s', '~10 s'],
+        answer: 2,
+        explain: 'Server work is unchanged, but every round trip is ten times longer: DNS, two handshakes, the request and several rounds of files add up to about 2 seconds.',
+      },
       metrics: {
         dns: { v: '100 ms', tone: 'warn' },
         connect: { v: '600 ms', tone: 'bad' },

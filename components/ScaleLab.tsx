@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { allLessons, course, findInCourse, type CourseModule } from '../src/course';
 import { Stage } from '../src/engine/stage';
 import { LOCALES, type Locale } from '../src/i18n';
 import { getPathname } from '../src/i18n/navigation';
 import { lb, link, server, spread, users } from '../src/lessons/helpers';
-import type { Lesson, MetricValue, Scene } from '../src/types';
+import { labFor, type Lab } from '../src/lessons/labs';
+import type { Lesson, MetricValue, Predict, Scene, Step } from '../src/types';
 import { currentTheme, load, markVisited, save, setLastStep, setTheme } from '../src/ui/store';
 
 type Progress = { visited: Record<string, number[]>; last: Record<string, number> };
@@ -35,12 +36,19 @@ const HERO: Scene = {
   flows: [...spread([['ul', 'la'], ['ul', 'lb']], 3, { bounce: true }), { route: ['ul', 'lc'], kind: 'req', rate: 0.5, fail: 1 }],
 };
 
-function Diagram({ scene, stageRef, jump }: { scene: Scene; stageRef: React.RefObject<Stage | null>; jump: boolean }) {
+function Diagram({ scene, stageRef, jump, breakable = '', broken = '', onEntityClick }: {
+  scene: Scene; stageRef: React.RefObject<Stage | null>; jump: boolean;
+  /** Comma-separated entity ids, kept as strings so effect dependencies stay stable. */
+  breakable?: string; broken?: string; onEntityClick?: (id: string) => void;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const first = useRef(true);
+  const onClick = useRef(onEntityClick);
+  useEffect(() => { onClick.current = onEntityClick; });
   useEffect(() => {
     if (!host.current) return;
     const stage = new Stage(host.current);
+    stage.onEntityClick = (id) => onClick.current?.(id);
     stageRef.current = stage;
     first.current = true;
     return () => {
@@ -49,9 +57,13 @@ function Diagram({ scene, stageRef, jump }: { scene: Scene; stageRef: React.RefO
     };
   }, [stageRef]);
   useEffect(() => {
-    stageRef.current?.setScene(scene, { jumpCamera: first.current || jump });
+    const stage = stageRef.current;
+    if (!stage) return;
+    const ids = (s: string) => (s ? s.split(',') : []);
+    stage.setChaos(ids(breakable), ids(broken));
+    stage.setScene(scene, { jumpCamera: first.current || jump });
     first.current = false;
-  }, [scene, stageRef, jump]);
+  }, [scene, stageRef, jump, breakable, broken]);
   return <div ref={host} className={jump ? 'hero-art' : 'stage'} aria-hidden={jump || undefined} />;
 }
 
@@ -139,6 +151,77 @@ function Changes({ lesson, index }: { lesson: Lesson; index: number }) {
   return <div className="changes"><h3>{t('step.changed')}</h3><ul>{rows.map(([sign, content], j) => <li key={j} className={`ch-${sign === '+' ? 'add' : sign === '-' ? 'remove' : 'change'}`}><i aria-hidden="true">{sign === '-' ? '−' : sign}</i><span>{content}</span></li>)}</ul></div>;
 }
 
+const kbd = (chunks: React.ReactNode) => <kbd>{chunks}</kbd>;
+
+function PredictCard({ predict, onChoose, onSkip }: { predict: Predict; onChoose: (i: number) => void; onSkip: () => void }) {
+  const t = useTranslations();
+  return <div className="predict">
+    <span className="predict-tag">{t('predict.label')}</span>
+    <p className="predict-q">{predict.question}</p>
+    <ol className="predict-opts">{predict.options.map((o, i) => <li key={i}>
+      <button type="button" className="predict-opt" onClick={() => onChoose(i)}><kbd>{i + 1}</kbd><span>{o}</span></button>
+    </li>)}</ol>
+    <div className="predict-foot">
+      <span className="keys">{t.rich('predict.keys', { n: predict.options.length, kbd })}</span>
+      <button type="button" className="btn small" onClick={onSkip}>{t('predict.skip')}</button>
+    </div>
+  </div>;
+}
+
+function PredictResult({ predict, choice }: { predict: Predict; choice: number | undefined }) {
+  const t = useTranslations();
+  const correct = choice === predict.answer;
+  const answer = predict.options[predict.answer]!;
+  return <div className={`predict-result ${choice === undefined ? 'is-skipped' : correct ? 'is-correct' : 'is-wrong'}`}>
+    <p className="pr-verdict">
+      {choice !== undefined && <b>{correct ? t('predict.correct') : t('predict.wrong')}</b>}
+      {!correct && <span>{t('predict.answer', { answer })}</span>}
+    </p>
+    {choice !== undefined && !correct && <p className="pr-yours">{t('predict.yours', { choice: predict.options[choice] ?? '' })}</p>}
+    <p className="pr-explain" dangerouslySetInnerHTML={{ __html: predict.explain }} />
+  </div>;
+}
+
+function LabCard({ lab, locale, values, note, onChange, onReset }: {
+  lab: Lab; locale: Locale; values: Record<string, number>; note: string;
+  onChange: (id: string, v: number) => void; onReset: () => void;
+}) {
+  const t = useTranslations();
+  return <div className="play-card lab-card">
+    <div className="play-head"><h3>{lab.title[locale]}</h3><button type="button" className="btn small" onClick={onReset}>{t('lab.reset')}</button></div>
+    <p className="play-intro">{lab.intro[locale]}</p>
+    <div className="lab-controls">{lab.controls.map((c) => {
+      const v = values[c.id] ?? c.value;
+      return <label className="lab-control" key={c.id}>
+        <span className="lab-label">{c.label[locale]}</span>
+        <output>{v} {c.unit}</output>
+        <input type="range" aria-label={c.label[locale]} min={c.min} max={c.max} step={c.step} value={v} onChange={(e) => onChange(c.id, Number(e.target.value))} />
+      </label>;
+    })}</div>
+    <p className="lab-note" aria-live="polite">{note}</p>
+  </div>;
+}
+
+function ChaosCard({ step, broken, onToggle, onRepair }: { step: Step; broken: string[]; onToggle: (id: string) => void; onRepair: () => void }) {
+  const t = useTranslations();
+  const name = (id: string) => step.scene.entities[id]?.label ?? id;
+  return <div className="play-card chaos-card">
+    <div className="play-head"><h3>{t('chaos.title')}</h3>{broken.length > 0 && <button type="button" className="btn small" onClick={onRepair}>{t('chaos.repair')}</button>}</div>
+    <p className="play-intro">{t('chaos.intro')}</p>
+    <div className="chaos-targets">{Object.keys(step.chaos ?? {}).map((id) => <button key={id} type="button" className={`chaos-target${broken.includes(id) ? ' is-on' : ''}`} aria-pressed={broken.includes(id)} onClick={() => onToggle(id)}>{name(id)}</button>)}</div>
+    {broken.map((id) => <div className="chaos-effect" key={id}>
+      <b>{t('chaos.down', { name: name(id) })}</b>
+      <p dangerouslySetInnerHTML={{ __html: step.chaos?.[id]?.text ?? '' }} />
+    </div>)}
+  </div>;
+}
+
+const readAnswers = (lessonId: string) => load<Record<string, Record<string, number>>>('predict', {})[lessonId] ?? {};
+function saveAnswer(lessonId: string, index: number, choice: number) {
+  const all = load<Record<string, Record<string, number>>>('predict', {});
+  save('predict', { ...all, [lessonId]: { ...all[lessonId], [index]: choice } });
+}
+
 function LessonScreen({ lesson, place, locale, step, progress, onProgress, onStepNavigation }: {
   lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; onProgress: () => void; onStepNavigation: () => void;
 }) {
@@ -156,6 +239,52 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const n = lesson.steps.length;
   const seen = seenFor(progress, lesson.id);
   const values = valuesAt(lesson, index);
+
+  // Predict: answers come from storage after mount, so the first render always asks.
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [skipped, setSkipped] = useState<Set<number>>(() => new Set());
+  useEffect(() => setAnswers(readAnswers(lesson.id)), [lesson.id]);
+  const choice = answers[index];
+  const pending = !!current.predict && choice === undefined && !skipped.has(index);
+  const choose = useCallback((i: number) => {
+    saveAnswer(lesson.id, index, i);
+    setAnswers((a) => ({ ...a, [index]: i }));
+  }, [lesson.id, index]);
+  const skip = useCallback(() => setSkipped((s) => new Set(s).add(index)), [index]);
+
+  // Lab: metrics follow the sliders live; the diagram follows shortly after so packets keep flowing.
+  const lab = labFor(lesson.id, index + 1);
+  const defaults = useMemo(() => Object.fromEntries((lab?.controls ?? []).map((c) => [c.id, c.value])), [lab]);
+  const [labValues, setLabValues] = useState(defaults);
+  const [sceneValues, setSceneValues] = useState(defaults);
+  useEffect(() => { setLabValues(defaults); setSceneValues(defaults); }, [defaults]);
+  useEffect(() => {
+    const id = setTimeout(() => setSceneValues(labValues), 180);
+    return () => clearTimeout(id);
+  }, [labValues]);
+  const labResult = useMemo(() => (lab ? lab.compute(labValues, locale, current.scene) : null), [lab, labValues, locale, current.scene]);
+  const labScene = useMemo(() => (lab ? lab.compute(sceneValues, locale, current.scene).scene : null), [lab, sceneValues, locale, current.scene]);
+
+  // Chaos: entities the reader has broken on this step, in the order they were broken.
+  const [broken, setBroken] = useState<string[]>([]);
+  useEffect(() => setBroken([]), [index]);
+  const canBreak = !pending && !!current.chaos;
+  const toggleBroken = useCallback((id: string) => {
+    if (!current.chaos?.[id]) return;
+    setBroken((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
+  }, [current.chaos]);
+  const brokenKey = broken.join(',');
+  const chaosScene = useMemo(() => {
+    if (!brokenKey) return current.scene;
+    const ids = brokenKey.split(',');
+    return { ...current.scene, entities: Object.fromEntries(Object.entries(current.scene.entities).map(([id, e]) => [id, ids.includes(id) ? { ...e, down: true } : e])) };
+  }, [current.scene, brokenKey]);
+
+  const stageScene = pending ? (lesson.steps[index - 1]?.scene ?? current.scene) : (labScene ?? chaosScene);
+  const shownValues: Record<string, MetricValue> = pending
+    ? valuesAt(lesson, Math.max(0, index - 1))
+    : Object.assign({}, values, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
+  const shownKey = JSON.stringify(shownValues);
   useEffect(() => setActiveStep(step), [step]);
   useEffect(() => {
     const onPopState = () => {
@@ -177,10 +306,11 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     goToStep(next);
   };
   const nav = useCallback((delta: number) => {
+    if (delta > 0 && pending) return skip();
     const next = index + delta;
     if (next >= n) router.push(homePath(locale));
     else if (next >= 0) goToStep(next + 1);
-  }, [index, n, router, locale, goToStep]);
+  }, [index, n, router, locale, goToStep, pending, skip]);
   const togglePause = useCallback(() => {
     const instance = stage.current;
     if (!instance) return;
@@ -204,7 +334,9 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
       const target = ev.target;
       if (ev.metaKey || ev.ctrlKey || ev.altKey || (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))) return;
       const key = ev.key.toLowerCase();
-      if (key === 'arrowright' || key === 'pagedown') nav(1);
+      const option = pending && current.predict && /^[1-9]$/.test(key) ? Number(key) - 1 : -1;
+      if (option >= 0 && option < (current.predict?.options.length ?? 0)) choose(option);
+      else if (key === 'arrowright' || key === 'pagedown') nav(1);
       else if (key === 'arrowleft' || key === 'pageup') nav(-1);
       else if (key === ' ') togglePause();
       else if (key === 'r') stage.current?.replay();
@@ -214,7 +346,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [nav, togglePause]);
+  }, [nav, togglePause, pending, current.predict, choose]);
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>('.metric[data-id] .m-val');
     for (const el of elements) {
@@ -228,28 +360,35 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
       }
       shown.current.set(id, value);
     }
-  }, [index, lesson]);
+  }, [index, lesson, shownKey]);
   return <div className="lesson">
-    <section className="center">
+    <section className={`center${(lab && !pending) || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
         <div className="l-title-row"><h1>{lesson.title}</h1><div className="pills"><span className="pill-chip p-time">◷ {t('lesson.min', { n: lesson.minutes })}</span><span className="pill-chip p-level">▮ {t(`level.${lesson.level}`)}</span><span className="pill-chip p-steps">☰ {t('lesson.steps', { n })}</span></div></div><p className="l-summary">{lesson.summary}</p>
       </header>
       <div className="stage-card"><div className="stage-top">
         <div className="metrics">{lesson.metrics.map((m) => {
-          const v = values[m.id] ?? '—';
+          const v = shownValues[m.id] ?? '—';
           return <div className="metric" data-id={m.id} key={m.id}><span className="m-label">{m.label}</span><span className={`m-val${typeof v === 'string' ? '' : ` tone-${v.tone}`}`}>{typeof v === 'string' ? v : v.v}</span></div>;
         })}</div>
         <div className="controls"><button className="btn small replay" type="button" title="R" onClick={() => stage.current?.replay()}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
-      </div><Diagram scene={current.scene} stageRef={stage} jump={false} /><div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
+      </div><Diagram scene={stageScene} stageRef={stage} jump={false} breakable={canBreak ? Object.keys(current.chaos ?? {}).join(',') : ''} broken={canBreak ? brokenKey : ''} onEntityClick={toggleBroken} /><div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
         const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
         return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
-      })}</div><span className="stage-hint">{t('stage.hint')}</span></div></div>
+      })}</div><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
+      {lab && labResult && !pending && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
+      {canBreak && <ChaosCard step={current} broken={broken} onToggle={toggleBroken} onRepair={() => setBroken([])} />}
       <div className="timeline-card"><div className="tl-head"><span>{t('lesson.timeline')}</span><span className="tl-count">{t('lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
     </section>
     <aside className="side"><div className="step-card" ref={stepCard}><div className="step-top"><span className="step-no">{t('step.label', { i: index + 1, n })}</span><span className={`chip ch-${current.chapter}`}>{t(`chapter.${current.chapter}`)}</span></div>
-      <article className="step enter" aria-live="polite" key={index}><h2>{current.title}</h2>{current.body.map((p, i) => p.trimStart().startsWith('<table') ? <div key={i} dangerouslySetInnerHTML={{ __html: p }} /> : <p key={i} dangerouslySetInnerHTML={{ __html: p }} />)}
-        {current.callout && <aside className={`callout co-${current.callout.kind}`}><b>{t(`callout.${current.callout.kind}`)}</b><span dangerouslySetInnerHTML={{ __html: current.callout.text }} /></aside>}
-        <Changes lesson={lesson} index={index} />
+      <article className="step enter" aria-live="polite" key={`${index}${pending ? '-ask' : ''}`}><h2>{current.title}</h2>
+        {pending && current.predict && <PredictCard predict={current.predict} onChoose={choose} onSkip={skip} />}
+        <div className="step-body" hidden={pending}>
+          {!pending && current.predict && <PredictResult predict={current.predict} choice={choice} />}
+          {current.body.map((p, i) => p.trimStart().startsWith('<table') ? <div key={i} dangerouslySetInnerHTML={{ __html: p }} /> : <p key={i} dangerouslySetInnerHTML={{ __html: p }} />)}
+          {current.callout && <aside className={`callout co-${current.callout.kind}`}><b>{t(`callout.${current.callout.kind}`)}</b><span dangerouslySetInnerHTML={{ __html: current.callout.text }} /></aside>}
+          {!pending && <Changes lesson={lesson} index={index} />}
+        </div>
       </article>
       <nav className="step-nav"><button className="btn prev" type="button" disabled={index === 0} onClick={() => nav(-1)}>← {t('step.back')}</button><button className="btn primary next" type="button" onClick={() => nav(1)}>{lesson.steps[index + 1] ? `${t('step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${t('step.finish')} ✓`}</button></nav>
       <p className="keys">{t.rich('step.keys', { kbd: (chunks) => <kbd>{chunks}</kbd> })}</p>

@@ -48,6 +48,23 @@ const en = {
     tradeoff: 'trade-off', insight: 'insight', recap: 'recap',
   },
   callout: { insight: 'Key idea', tip: 'Tip', warning: 'Watch out' },
+  predict: {
+    label: 'Predict first',
+    skip: 'Skip — just show me',
+    correct: 'Correct!',
+    wrong: 'Not quite.',
+    answer: 'The answer: {answer}',
+    yours: 'You guessed: {choice}',
+    keys: 'Press <kbd>1</kbd>–<kbd>{n}</kbd> to answer',
+  },
+  lab: { reset: 'Reset' },
+  chaos: {
+    hint: 'click a component to break it',
+    title: 'Break it',
+    intro: 'Take a component down and watch what fails.',
+    repair: 'Repair all',
+    down: '{name} is down',
+  },
   packet: {
     req: 'request', res: 'response', slow: 'slow', write: 'write',
     fail: 'failure', poison: 'bad traffic', ping: 'control',

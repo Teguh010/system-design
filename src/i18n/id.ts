@@ -50,6 +50,23 @@ const id = {
     tradeoff: 'trade-off', insight: 'wawasan', recap: 'rangkuman',
   },
   callout: { insight: 'Ide kunci', tip: 'Tips', warning: 'Hati-hati' },
+  predict: {
+    label: 'Tebak dulu',
+    skip: 'Lewati — langsung tunjukkan',
+    correct: 'Benar!',
+    wrong: 'Belum tepat.',
+    answer: 'Jawabannya: {answer}',
+    yours: 'Tebakanmu: {choice}',
+    keys: 'Tekan <kbd>1</kbd>–<kbd>{n}</kbd> untuk menjawab',
+  },
+  lab: { reset: 'Reset' },
+  chaos: {
+    hint: 'klik sebuah komponen untuk merusaknya',
+    title: 'Rusak sistemnya',
+    intro: 'Matikan sebuah komponen dan lihat apa yang gagal.',
+    repair: 'Perbaiki semua',
+    down: '{name} mati',
+  },
   packet: {
     req: 'request', res: 'response', slow: 'lambat', write: 'tulis',
     fail: 'gagal', poison: 'trafik jahat', ping: 'kontrol',

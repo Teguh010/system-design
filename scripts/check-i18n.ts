@@ -26,6 +26,8 @@ for (const entry of allLessons) {
     for (const l of Object.values<any>(s.scene.links ?? {})) add(l.label);
     for (const e of Object.values<any>(s.scene.entities)) add(e.meter?.label);
     for (const v of Object.values<any>(s.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
+    for (const c of Object.values<any>(s.chaos ?? {}))
+      for (const v of Object.values<any>(c.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
   }
   const unused = Object.keys(o.labels ?? {}).filter((k) => !strings.has(k));
   if (o.steps.length !== lesson.steps.length) { problems++; console.log(lesson.id, 'step count', o.steps.length, lesson.steps.length); }
@@ -34,6 +36,15 @@ for (const entry of allLessons) {
     if (so?.body?.length !== s.body.length) { problems++; console.log(lesson.id, 'step', i + 1, 'body', so?.body?.length, s.body.length); }
     if (!!s.callout !== !!so?.callout) { problems++; console.log(lesson.id, 'step', i + 1, 'callout mismatch'); }
     if ((s.changes?.length ?? 0) !== (so?.changes?.length ?? 0)) { problems++; console.log(lesson.id, 'step', i + 1, 'changes', so?.changes?.length ?? 0, s.changes?.length ?? 0); }
+    if (!!s.predict !== !!so?.predict) { problems++; console.log(lesson.id, 'step', i + 1, 'predict mismatch'); }
+    if (s.predict && (so?.predict?.options?.length !== s.predict.options.length || !so?.predict?.question || !so?.predict?.explain)) {
+      problems++; console.log(lesson.id, 'step', i + 1, 'predict incomplete');
+    }
+    if (s.predict && !(s.predict.answer >= 0 && s.predict.answer < s.predict.options.length)) { problems++; console.log(lesson.id, 'step', i + 1, 'predict answer out of range'); }
+    const chaosKeys = (x: any) => Object.keys(x ?? {}).sort().join(',');
+    if (chaosKeys(s.chaos) !== chaosKeys(so?.chaos)) { problems++; console.log(lesson.id, 'step', i + 1, 'chaos keys', chaosKeys(so?.chaos), chaosKeys(s.chaos)); }
+    for (const id of Object.keys(s.chaos ?? {}))
+      if (!s.scene.entities[id]) { problems++; console.log(lesson.id, 'step', i + 1, 'chaos target missing from scene:', id); }
   });
   if (o.goals.length !== lesson.goals.length || o.metrics.length !== lesson.metrics.length) { problems++; console.log(lesson.id, 'goals/metrics count'); }
   if (unused.length) { problems++; console.log(lesson.id, 'UNUSED label keys:', unused); }

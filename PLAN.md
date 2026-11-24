@@ -27,7 +27,8 @@ npm run typecheck
 npm run build        # static export ke out/
 npm run preview      # sajikan out/ lewat Python 3
 npm run check:i18n   # validasi terjemahan
-npm run test:i18n    # tes pesan UI dan pluralisasi
+npm run test         # tes pesan UI, pluralisasi, dan model lab
+npm run test:i18n    # tes pesan UI dan pluralisasi saja
 npm run check:export # periksa HTML lesson setelah build
 ```
 
@@ -47,6 +48,8 @@ npm run check:export # periksa HTML lesson setelah build
 - [x] Label pil di garis (`label`, `labelTone`) + panah (`arrow`); pil digambar di atas paket
 - [x] Meter di entitas (`meter: { label, value, tone }`), ikon di permukaan atas (`icon`)
 - [x] Panel "What changed" (catatan `changes` + selisih metrik otomatis)
+- [x] Interaktif (4.5): tebak dulu (`predict`), lab slider (`src/lessons/labs/`), rusak sistemnya (`chaos`) —
+      baru dipakai di `request-lifecycle`
 
 ### Struktur kursus dan UI
 - [x] 9 modul / 40 lesson di `src/course.ts`; lesson yang belum ditulis tampil "soon"
@@ -255,6 +258,42 @@ ditangkap **dari diagramnya saja**, tanpa membaca teks:
 - Jangan menambah dependency runtime. Kalau benar-benar perlu, diskusikan dulu.
 - Komentar kode seperlunya saja (hanya untuk hal yang tidak jelas dari kodenya).
 
+### 4.5 Fitur interaktif (pola percobaan: `request-lifecycle`)
+
+Tujuannya agar pembaca **berpikir dan mencoba**, bukan hanya menonton. Pakai seperlunya: fitur ini
+membantu kalau ada satu pertanyaan atau satu eksperimen yang jelas, bukan di setiap step.
+
+**Tebak dulu (`step.predict`)** — data biasa di lesson.
+- `{ question, options[], answer, explain }`. Selama belum dijawab, stage dan metrik menampilkan
+  **step sebelumnya** dan isi step disembunyikan; setelah menjawab (atau "Lewati"), hasilnya terungkap.
+- Pakai 2–3 per lesson, di step yang hasilnya **mengejutkan atau bisa dihitung** (contoh: CPU justru
+  turun saat N+1). Jangan menanyakan definisi. Pengecoh harus masuk akal; jawaban benar harus konsisten
+  dengan metrik step itu.
+- Judul step tetap terlihat, jadi jangan sampai judulnya membocorkan jawaban.
+- Jawaban tersimpan di `localStorage` (`stl:predict`). Tombol `1`–`n` memilih, `→` melewati.
+- Overlay ID: `steps[i].predict = { question, options[], explain }` dengan jumlah opsi yang sama.
+
+**Rusak sistemnya (`step.chaos`)** — data biasa di lesson.
+- `{ <entityId>: { text, metrics? } }`. Entitas itu bisa diklik (atau lewat tombol di kartu) untuk
+  dimatikan: tampil `down`, paket yang tiba di sana gagal, dan `metrics` menimpa nilai step.
+- Engine: `Stage.setChaos(breakable, broken)` bersifat opt-in, jadi lesson lain tidak terpengaruh.
+- Tulis `text` yang menjelaskan **akibat dan alasannya**, termasuk kasus "belum terjadi apa-apa"
+  (contoh: resolver mati tapi jawabannya masih di-cache). Pilih step yang semua komponennya tampil.
+- Overlay ID: `steps[i].chaos = { <entityId>: 'teks' }` dengan kunci yang sama; nilai `metrics` lewat `labels`.
+
+**Lab slider (`src/lessons/labs/<lesson-id>.ts`)** — kode, bukan data lesson.
+- Lesson dikirim dari server ke client sebagai props, jadi **tidak boleh berisi fungsi**. Lab didaftarkan
+  di [labs/index.ts](src/lessons/labs/index.ts) dan dicari dengan `labFor(lessonId, step)`.
+- `compute(values, locale, baseScene)` mengembalikan `metrics`, `scene` (turunan dari scene step yang sudah
+  diterjemahkan, supaya label tetap berbahasa benar), dan satu kalimat `note`.
+- **Model harus sama dengan angka step statis.** Tulis tes yang membandingkan rumus dengan metrik
+  step (lihat [scripts/test-labs.ts](scripts/test-labs.ts)). Tandai rumus yang ilustratif.
+- Metrik berubah langsung saat slider digeser; diagram menyusul ±180 ms supaya paket tidak terus di-reset.
+- Lab paling cocok di recap atau step "kenapa", dan sebaiknya bisa menjawab pertanyaan "Check yourself".
+
+Layout: step dengan kartu lab/chaos memberi diagram tinggi tetap (`.center.has-play`) dan kolomnya bisa
+di-scroll, supaya diagram tidak tertekan.
+
 ---
 
 ## 5. Alur kerja menambah satu lesson (Definition of Done)
@@ -353,6 +392,12 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 ### Platform
 - [x] Migrasi UI ke Next.js (bagian 8).
 
+### Fitur interaktif (4.5) — sebarkan ke lesson lain setelah diuji di `request-lifecycle`
+- [x] `request-lifecycle`: predict di step 3, 8, 9; chaos di step 5; lab di step 10
+- [ ] Evaluasi dengan pembaca dulu (apakah pertanyaan dan lab membantu?) sebelum menyebarkan
+- [ ] `latency-throughput` (lab: arrival rate vs jumlah worker → antrean), `load-balancing` (chaos: matikan server),
+      `caching` (lab: hit rate → beban DB), `cdn` (lab: jarak pembaca)
+
 ### Ide fitur (opsional, setelah lesson)
 - [ ] Search ⌘K (judul lesson, step, istilah)
 - [ ] Deploy ke Vercel / GitHub Pages
@@ -374,6 +419,8 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 - Periksa port sebelum menjalankan server tambahan; jangan hentikan server milik user.
 - Pil label garis ada di layer tersendiri (`layer-labels`), di atas paket dan di bawah entitas. Kalau
   menambah elemen per-link lain, ingat untuk ikut menghapusnya saat link dibuang.
+- Jangan ubah `.stage-card` menjadi `flex-basis: auto`: ukuran intrinsik SVG membuat kartu membesar dan
+  timeline terdorong ke bawah di lesson lain. Atur tinggi khusus lewat `.center.has-play`.
 
 ---
 

@@ -56,6 +56,20 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
         ...(step.callout && { callout: { ...step.callout, text: so?.callout ?? step.callout.text } }),
         ...(step.changes && { changes: step.changes.map((c, j) => so?.changes?.[j] ?? c) }),
         ...(step.metrics && { metrics: Object.fromEntries(Object.entries(step.metrics).map(([k, v]) => [k, metric(v)])) }),
+        ...(step.predict && {
+          predict: {
+            ...step.predict,
+            question: so?.predict?.question ?? step.predict.question,
+            options: step.predict.options.map((opt, j) => so?.predict?.options?.[j] ?? opt),
+            explain: so?.predict?.explain ?? step.predict.explain,
+          },
+        }),
+        ...(step.chaos && {
+          chaos: Object.fromEntries(Object.entries(step.chaos).map(([id, c]) => [id, {
+            text: so?.chaos?.[id] ?? c.text,
+            ...(c.metrics && { metrics: Object.fromEntries(Object.entries(c.metrics).map(([k, v]) => [k, metric(v)])) }),
+          }])),
+        }),
         scene: scene(step.scene),
       };
     }),

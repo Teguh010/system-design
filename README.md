@@ -15,6 +15,7 @@ npm run typecheck
 npm run build      # static production export into out/
 npm run preview    # serve out/ locally with Python 3
 npm run check:i18n # every lesson translation matches its English source
+npm run test       # UI messages and lab model tests
 npm run test:i18n  # UI translation and pluralization regression tests
 npm run check:export # verify localized lesson HTML after build
 ```
@@ -70,6 +71,17 @@ already fits). Metrics not set on a step carry over from earlier steps.
 - `size` scales a shape (not its labels), e.g. `server(15, 0, { size: 1.6 })` for a bigger machine.
 - Flow routes are link ids in order; prefix with `~` to travel a link backwards. `bounce` sends a response back,
   `fail` is the chance a packet dies on arrival, `kind` picks the packet colour.
+
+### Interactive steps
+
+- `predict` asks a question before the step is revealed; the stage keeps showing the previous step until
+  the reader answers or skips. Answers are saved in `localStorage`.
+- `chaos` lists entities the reader can break by clicking them; packets that reach a broken entity fail, and
+  the step's metrics can be overridden.
+- Labs (`src/lessons/labs/`) add sliders whose formula recomputes metrics and the scene. They are code, so they
+  live outside the serializable lesson data; `scripts/test-labs.ts` keeps the formula in line with the static steps.
+
+See section 4.5 of [PLAN.md](PLAN.md) for when to use each.
 
 ## Languages
 

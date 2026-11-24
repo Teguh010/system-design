@@ -34,6 +34,10 @@ const overlay: LessonOverlay = {
     '0.4 s … 2 s+': '0,4 dtk … 2 dtk+',
     '1,000 ms': '1.000 ms',
     '~2.0 s': '~2,0 dtk',
+    '500 error': '500 error',
+    'error page': 'halaman error',
+    timeout: 'timeout',
+    'site down': 'situs mati',
   },
   steps: [
     {
@@ -64,6 +68,11 @@ const overlay: LessonOverlay = {
       ],
       callout: 'Round-trip time (RTT) adalah satuan latency di jaringan. Hitung jumlah round trip-nya, lalu kalikan.',
       changes: ['+ jawaban DNS di-cache selama 5 menit', '+ handshake TCP + TLS: 2 round trip @ 30 ms'],
+      predict: {
+        question: 'Server-nya berjarak 30 ms (satu round trip). Sebelum browser bisa mengirim request, ia harus membuka koneksi yang aman. Berapa lama itu?',
+        options: ['Hampir nol — cuma beberapa pesan kecil', '30 ms — satu round trip', '60 ms — dua round trip', '300 ms — enkripsi itu lambat'],
+        explain: 'TCP butuh satu round trip dan TLS 1.3 satu lagi. Pesannya kecil, jadi bandwidth tidak berpengaruh: masing-masing menunggu satu round trip penuh.',
+      },
     },
     {
       short: 'Request',
@@ -82,6 +91,11 @@ const overlay: LessonOverlay = {
         'Perhatikan betapa kecilnya angka-angka ini dibanding jaringan: sekitar 25 ms kerja, dengan CPU yang nyaris santai. Request pada umumnya lebih lama di perjalanan daripada saat dikerjakan — selama server mengerjakan jumlah kerja yang wajar.',
       ],
       changes: ['+ 3 query di dalam data center, ~25 ms kerja'],
+      chaos: {
+        db: 'Web server masih menjawab, tapi tidak bisa menyusun artikel tanpa datanya. Pembaca mendapat halaman error — atau menunggu timeout kalau server terus mencoba. Satu dependensi mati, halaman ini ikut mati.',
+        web: 'DNS masih menunjuk ke <code>203.0.113.7</code>, tapi tidak ada yang menjawab di sana. Browser menunggu koneksi sampai menyerah. Dengan satu server, satu kegagalan berarti seluruh situs mati — Modul 02 menaruh beberapa server di balik satu alamat.',
+        resolver: 'Belum terjadi apa-apa. Browser sudah punya alamatnya, di-cache selama 5 menit. Saat TTL itu habis, pengunjung baru tidak bisa menemukan situsnya walaupun server-nya sehat.',
+      },
     },
     {
       short: 'Response',
@@ -111,6 +125,11 @@ const overlay: LessonOverlay = {
       ],
       callout: 'Ukur dulu sebelum mengoptimalkan. Kalau jaringan baik-baik saja tapi kolom server membengkak, hitung query-nya sebelum membeli hardware.',
       changes: ['+ komentar mencari setiap penulis terpisah: 40 query tambahan', '~ CPU server turun — ia menunggu, bukan bekerja'],
+      predict: {
+        question: 'Artikel populer sekarang menjalankan 40 query database tambahan, satu per penulis komentar. Apa yang terjadi pada CPU web server?',
+        options: ['Naik mendekati 100%', 'Kurang lebih tetap', 'Turun — server lebih banyak menunggu'],
+        explain: 'Setiap query adalah satu round trip ke database. Selama menunggu jawaban, CPU tidak banyak bekerja, jadi halamannya makin lambat sementara server terlihat santai.',
+      },
     },
     {
       short: 'Jauh',
@@ -121,6 +140,11 @@ const overlay: LessonOverlay = {
       ],
       callout: 'Latency punya dua sumber besar: kerja di server dan jarak di jaringan. Keduanya butuh solusi yang berbeda.',
       changes: ['+ pembaca dengan round trip 300 ms', '~ N+1 sudah diperbaiki: kerja server kembali normal', '~ setiap round trip 10× lebih mahal'],
+      predict: {
+        question: 'Anggap masalah N+1 sudah diperbaiki. Pembaca di benua lain punya round trip 300 ms, bukan 30 ms. Kira-kira kapan halamannya selesai?',
+        options: ['~0,4 dtk, sama seperti yang lain', '~0,7 dtk', '~2 dtk', '~10 dtk'],
+        explain: 'Kerja server tidak berubah, tapi setiap round trip sepuluh kali lebih lama: DNS, dua handshake, request, dan beberapa putaran file berjumlah sekitar 2 detik.',
+      },
     },
     {
       short: 'Rangkuman',

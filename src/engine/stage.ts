@@ -98,6 +98,10 @@ export class Stage {
   private raf = 0;
   private cleanup: (() => void)[] = [];
   private arrowId = `arrow-${++stageCount}`;
+  private breakable = new Set<string>();
+  private broken = new Set<string>();
+  /** Called when the reader clicks (not drags) a breakable entity. */
+  onEntityClick: ((id: string) => void) | null = null;
 
   constructor(host: HTMLElement) {
     this.svg = svg('svg', { class: 'stage-svg', role: 'img', 'aria-label': 'System diagram' }, host);
@@ -147,6 +151,22 @@ export class Stage {
     this.svg.classList.toggle('is-paused', p);
   }
 
+  /**
+   * Opt-in failure mode. Breakable entities become clickable; packets that reach a broken entity
+   * fail there instead of continuing. Call before `setScene` with the scene that marks them `down`.
+   */
+  setChaos(breakable: Iterable<string>, broken: Iterable<string>) {
+    this.breakable = new Set(breakable);
+    this.broken = new Set(broken);
+    for (const live of this.ents.values()) this.applyEntClass(live);
+  }
+
+  private applyEntClass(live: LiveEnt) {
+    const e = live.e;
+    const cls = `ent k-${e.kind}${e.ghost ? ' is-ghost' : ''}${e.down ? ' is-down' : ''}${this.breakable.has(live.id) ? ' is-breakable' : ''}`;
+    if (live.g.getAttribute('class') !== cls) live.g.setAttribute('class', cls);
+  }
+
   /** Transition to a new scene. `jumpCamera` snaps the view instead of easing it. */
   setScene(scene: Scene, opts: { jumpCamera?: boolean } = {}) {
     this.scene = scene;
@@ -163,7 +183,7 @@ export class Stage {
       const to: Pose = { x: e.x, y: e.y, z: e.z ?? 0, o: 1 };
       let live = this.ents.get(id);
       if (!live) {
-        const g = svg('g', {}, this.layers.ents);
+        const g = svg('g', { 'data-ent': id }, this.layers.ents);
         const inner = svg('g', {}, g);
         const start = { ...to, z: to.z + ENTER_LIFT, o: 0 };
         live = { id, e, sig: '', g, inner, geo: { hull: [], center: [0, 0] }, pos: start, from: start, to, removing: false };
@@ -177,8 +197,8 @@ export class Stage {
         live.sig = sig;
         live.inner.replaceChildren();
         live.geo = drawEntity(live.inner, e);
-        live.g.setAttribute('class', `ent k-${e.kind}${e.ghost ? ' is-ghost' : ''}${e.down ? ' is-down' : ''}`);
       }
+      this.applyEntClass(live);
       live.from = { ...live.pos };
       live.to = to;
     }
@@ -410,14 +430,27 @@ export class Stage {
       }
     }
     const done: Packet[] = [];
+    // The entity a packet reaches at the end of a segment.
+    const reached = (s: Seg) => (s.rev ? s.link.l.from : s.link.l.to);
+    const pointAt = (s: Seg, d: number) => s.link.path.getPointAtLength(s.rev ? s.link.len - d : d);
     for (const p of this.packets) {
       p.d += (p.flow.speed ?? (p.kind === 'slow' ? 70 : 165)) * dt;
       let seg = p.segs[p.i]!;
+      let dead = false;
       while (p.d >= seg.link.len) {
+        if (this.broken.has(reached(seg))) {
+          this.fx('fail', pointAt(seg, seg.link.len));
+          dead = true;
+          break;
+        }
         p.d -= seg.link.len;
         p.i++;
         if (p.i >= p.segs.length) break;
         seg = p.segs[p.i]!;
+      }
+      if (dead) {
+        done.push(p);
+        continue;
       }
       if (p.i >= p.segs.length) {
         const last = p.segs[p.segs.length - 1]!;
@@ -538,21 +571,27 @@ export class Stage {
       { passive: false },
     );
     on('dblclick', (ev) => this.zoomAt(ev.clientX, ev.clientY, 0.5, true));
-    let drag: { id: number; cx: number; cy: number; view: Box; scale: number } | null = null;
+    let drag: { id: number; cx: number; cy: number; view: Box; scale: number; ent: string | null; moved: boolean } | null = null;
     on('pointerdown', (ev) => {
       if (ev.button !== 0) return;
       const m = el.getScreenCTM();
       if (!m) return;
+      const hit = ev.target instanceof Element ? ev.target.closest('[data-ent]') : null;
+      const ent = hit?.getAttribute('data-ent') ?? null;
       // Svg units per screen pixel, frozen for the whole drag so the content tracks the pointer.
-      drag = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, view: { ...this.view }, scale: 1 / m.a };
+      drag = {
+        id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, view: { ...this.view }, scale: 1 / m.a,
+        ent: ent && this.breakable.has(ent) ? ent : null, moved: false,
+      };
       el.setPointerCapture(ev.pointerId);
       el.classList.add('is-dragging');
     });
     on('pointermove', (ev) => {
       if (!drag || ev.pointerId !== drag.id) return;
+      if (!drag.moved && Math.hypot(ev.clientX - drag.cx, ev.clientY - drag.cy) < 4) return;
+      drag.moved = true;
       const dx = (ev.clientX - drag.cx) * drag.scale;
       const dy = (ev.clientY - drag.cy) * drag.scale;
-      if (Math.abs(dx) + Math.abs(dy) < 1) return;
       this.manual = true;
       this.cam = null;
       this.view = { ...drag.view, x: drag.view.x - dx, y: drag.view.y - dy };
@@ -560,8 +599,10 @@ export class Stage {
     });
     const end = (ev: PointerEvent) => {
       if (drag?.id !== ev.pointerId) return;
+      const clicked = ev.type === 'pointerup' && !drag.moved ? drag.ent : null;
       drag = null;
       el.classList.remove('is-dragging');
+      if (clicked) this.onEntityClick?.(clicked);
     };
     on('pointerup', end);
     on('pointercancel', end);
