@@ -1184,6 +1184,12 @@ a.lesson-card:hover {
 .k-user { --c: var(--k-user); }
 .k-cdn { --c: var(--k-cdn); }
 
+.face,
+.deco,
+.led {
+  vector-effect: non-scaling-stroke;
+}
+
 .face {
   stroke: var(--edge);
   stroke-width: 1.3;

@@ -7,6 +7,7 @@ Inspired by [Designed to Scale](https://designed-to-scale.vercel.app/). No UI fr
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # typecheck + production build into dist/
+npm run check:i18n # every lesson translation matches its English source
 ```
 
 **Keys:** `←` `→` step · `Space` pause traffic · `R` replay step · `F` fit view · drag to pan · scroll / double-click to zoom.
@@ -47,6 +48,8 @@ new position, new ones drop in, missing ones fade out, and the camera eases to f
 already fits). Metrics not set on a step carry over from earlier steps.
 
 - `at(u, v)` places things in screen-friendly axes (`u` → right, `v` → down) instead of the diagonal iso axes.
+  Keep stacked servers at least 17 `v` apart when they carry badges, so labels and badges don't collide.
+- `size` scales a shape (not its labels), e.g. `server(15, 0, { size: 1.6 })` for a bigger machine.
 - Flow routes are link ids in order; prefix with `~` to travel a link backwards. `bounce` sends a response back,
   `fail` is the chance a packet dies on arrival, `kind` picks the packet colour.
 
@@ -68,5 +71,5 @@ titles in `course.ts`; lesson translations can follow one by one.
 
 1. Create `src/lessons/<id>.ts` exporting a `Lesson` (see `src/types.ts`).
 2. In `src/course.ts`, replace the matching `soon(...)` entry with `ready(lesson, '<Indonesian title>')`.
-3. Optionally add `src/lessons/i18n/id/<id>.ts`.
+3. Optionally add `src/lessons/i18n/id/<id>.ts`, then run `npm run check:i18n`.
 4. Open `#/<id>/1`.

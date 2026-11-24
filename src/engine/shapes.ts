@@ -196,7 +196,9 @@ function drawCard(g: G, e: Entity): Geo {
 /** Draws an entity into `g` (local space) and returns its outline for link clipping. */
 export function drawEntity(g: G, e: Entity): Geo {
   if (e.kind === 'card') return drawCard(g, e);
-  const { points, h } = drawShape(g, e);
+  const k = e.size ?? 1;
+  const { points: raw, h } = drawShape(k === 1 ? g : svg('g', { transform: `scale(${k})` }, g), e);
+  const points = raw.map(([x, y]): Pt => [x * k, y * k]);
   const shape = convexHull(points);
   const ys = shape.map((p) => p[1]);
   const top = Math.min(...ys);
@@ -211,5 +213,5 @@ export function drawEntity(g: G, e: Entity): Geo {
   }
   const badge = e.badge ?? (e.down ? { text: 'DOWN', tone: 'bad' as const } : undefined);
   if (badge) box(pill(g, badge.text, top - 14, `badge tone-${badge.tone ?? 'info'}`, 10), top - 23, top - 5);
-  return { hull: convexHull([...points, ...extra]), center: project(0, 0, h / 2) };
+  return { hull: convexHull([...points, ...extra]), center: project(0, 0, (h * k) / 2) };
 }

@@ -1,8 +1,13 @@
 import type { Localized } from './i18n/index.ts';
+import { caching } from './lessons/caching.ts';
+import { cdns } from './lessons/cdn.ts';
 import { latencyThroughput } from './lessons/latency-throughput.ts';
+import { loadBalancing } from './lessons/load-balancing.ts';
 import { napkinMath } from './lessons/napkin-math.ts';
 import { requestLifecycle } from './lessons/request-lifecycle.ts';
+import { stateless } from './lessons/stateless.ts';
 import { urlShortener } from './lessons/url-shortener.ts';
+import { verticalHorizontal } from './lessons/vertical-horizontal.ts';
 import type { Lesson } from './types.ts';
 
 export interface CourseLesson {
@@ -38,11 +43,11 @@ export const course: CourseModule[] = [
     title: { en: 'Scaling', id: 'Scaling' },
     color: '#7fb77e',
     lessons: [
-      soon('vertical-horizontal', 'Vertical vs Horizontal', 'Vertikal vs Horizontal'),
-      soon('load-balancing', 'Load Balancing'),
-      soon('stateless', 'Stateless Services', 'Layanan Stateless'),
-      soon('caching', 'Caching'),
-      soon('cdn', 'CDNs', 'CDN'),
+      ready(verticalHorizontal, 'Scaling Vertikal vs Horizontal'),
+      ready(loadBalancing, 'Load Balancing'),
+      ready(stateless, 'Layanan Stateless'),
+      ready(caching, 'Caching'),
+      ready(cdns, 'CDN'),
     ],
   },
   {

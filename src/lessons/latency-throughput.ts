@@ -131,7 +131,7 @@ export const latencyThroughput: Lesson = {
           fans: FANS,
           line: LINE,
           api: { ...API, badge: { text: '90% busy', tone: 'warn' } },
-          card: card(18, -18, 'Wait vs. busy', ['busy  extra wait', '50%    1 × work', '80%    4 × work', '90%    9 × work', '! 95%   19 × work']),
+          card: card(20, -24, 'Wait vs. busy', ['busy  extra wait', '50%    1 × work', '80%    4 × work', '90%    9 × work', '! 95%   19 × work']),
         },
         links: { fq: link('fans', 'line'), qa: link('line', 'api') },
         flows: [

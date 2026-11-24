@@ -18,6 +18,8 @@ export interface Entity {
   badge?: Badge;
   down?: boolean;
   ghost?: boolean;
+  /** Scale of the shape (not its labels), e.g. 1.6 for a bigger machine. */
+  size?: number;
   /** Number of figures drawn for `user` entities (1–3). */
   count?: number;
   /** Card title and monospace lines. Prefix a line with `! `, `✓ ` or `# ` to colour it. */
