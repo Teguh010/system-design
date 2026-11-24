@@ -360,6 +360,16 @@ export const glossaryEntries: GlossaryEntry[] = [
     step: 2,
   },
   {
+    id: 'follower',
+    match: ['followers', 'follower'],
+    definition: {
+      en: 'A read-only replica that applies the leader’s replication log — the usual name in replication jargon.',
+      id: 'Replica read-only yang menerapkan log leader — istilah umum dalam jargon replikasi.',
+    },
+    lessonId: 'replication',
+    step: 3,
+  },
+  {
     id: 'replication-lag',
     match: ['replication lag'],
     definition: {
@@ -388,6 +398,36 @@ export const glossaryEntries: GlossaryEntry[] = [
     },
     lessonId: 'replication',
     step: 9,
+  },
+  {
+    id: 'stale-read',
+    match: ['stale read', 'stale reads'],
+    definition: {
+      en: 'A read from a lagging replica that returns data older than the leader already acknowledged.',
+      id: 'Baca dari replica yang tertinggal — data lebih tua dari yang leader sudah akui.',
+    },
+    lessonId: 'replication',
+    step: 5,
+  },
+  {
+    id: 'read-your-writes',
+    match: ['read-your-writes'],
+    definition: {
+      en: 'After your write succeeds, your very next read sees that write — often by routing you to the leader briefly.',
+      id: 'Setelah tulismu sukses, baca berikutnya melihat tulis itu — sering dengan mengarahkanmu ke leader sebentar.',
+    },
+    lessonId: 'replication',
+    step: 5,
+  },
+  {
+    id: 'split-brain',
+    match: ['split brain'],
+    definition: {
+      en: 'Two nodes both think they are the writable leader — divergent writes that are painful to merge.',
+      id: 'Dua node sama-sama mengira mereka leader writable — tulis menyimpang yang sulit digabung.',
+    },
+    lessonId: 'replication',
+    step: 8,
   },
 ];
 

@@ -83,6 +83,8 @@ npm run check:export # periksa HTML lesson setelah build
 **13 / 40 selesai.** Sisanya ada di bagian 6.
 
 ### Riwayat revisi penting
+- `replication` pilot **lebih baik dari referensi**: step 1 satu DB tanpa replica, kartu on-call,
+  `predict` (step 2 & 6), `chaos` (step 3), metrik `reads on primary`, glosarium stale read / RYW / split brain.
 - `request-lifecycle` jadi **lesson acuan visual**: konteks tetap tampil, label di garis, meter CPU,
   metrik yang menjumlah ke total, dan catatan `changes`. Lesson lain belum memakai fitur ini (lihat 6).
 - `request-lifecycle` ditulis ulang (EN + ID). Sekarang dibuka dengan masalah, tanpa load balancer/CDN,
