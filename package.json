@@ -7,7 +7,9 @@
     "build": "next build",
     "preview": "python3 -m http.server 3000 --directory out",
     "typecheck": "tsc --noEmit",
-    "check:i18n": "node scripts/check-i18n.ts"
+    "check:i18n": "node scripts/check-i18n.ts",
+    "test:i18n": "node --test scripts/test-i18n.ts",
+    "check:export": "node scripts/check-export.ts"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +24,7 @@
   "private": true,
   "dependencies": {
     "next": "^16.4.6",
+    "next-intl": "^4.16.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

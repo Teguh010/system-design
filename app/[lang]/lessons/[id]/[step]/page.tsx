@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import { hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
 import ScaleLab from '../../../../../components/ScaleLab';
 import { allLessons, findInCourse } from '../../../../../src/course';
 import { localize } from '../../../../../src/lessons/localize';
+import { routing } from '../../../../../src/i18n/routing';
 
 type Params = { lang: string; id: string; step: string };
 
@@ -14,11 +16,11 @@ export function generateStaticParams() {
 
 async function getPage(params: Promise<Params>) {
   const { lang, id, step } = await params;
-  if (lang !== 'en' && lang !== 'id') notFound();
+  if (!hasLocale(routing.locales, lang)) notFound();
   const source = findInCourse(id)?.entry.lesson;
   const index = Number(step) - 1;
   if (!source || !/^[1-9]\d*$/.test(step) || !Number.isSafeInteger(index) || index >= source.steps.length) notFound();
-  return { lang: lang as 'en' | 'id', id, step: index + 1, lesson: await localize(source, lang) };
+  return { lang, id, step: index + 1, lesson: await localize(source, lang) };
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {

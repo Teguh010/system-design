@@ -13,7 +13,7 @@ request mengalir, server tumbang, metrik berubah, dan teks di panel kanan menjel
 Inspirasinya [Designed to Scale](https://designed-to-scale.vercel.app/). **Semua teks, angka, dan
 skenario harus ditulis sendiri**, jangan menyalin dari situs itu atau dari sumber lain.
 
-- Stack saat ini: Next.js App Router + React + TypeScript; engine tetap SVG imperatif tanpa
+- Stack saat ini: Next.js App Router + React + TypeScript + next-intl; engine tetap SVG imperatif tanpa
   Canvas/WebGL. Detail migrasi dan batasannya ada di [bagian 8](#8-migrasi-ke-nextjs).
 - Materi utama berbahasa **Inggris**. Terjemahan **Bahasa Indonesia** wajib untuk setiap lesson.
 - Tidak ada backend. Progres disimpan di `localStorage` dengan prefix `stl:`.
@@ -27,6 +27,8 @@ npm run typecheck
 npm run build        # static export ke out/
 npm run preview      # sajikan out/ lewat Python 3
 npm run check:i18n   # validasi terjemahan
+npm run test:i18n    # tes pesan UI dan pluralisasi
+npm run check:export # periksa HTML lesson setelah build
 ```
 
 ---
@@ -51,10 +53,11 @@ npm run check:i18n   # validasi terjemahan
 - [x] Layout 3 kolom: sidebar kursus | stage + metrik + timeline | panel step + "You'll learn"
 - [x] Home: hero animasi + kartu lesson per modul + progres
 - [x] Responsif: drawer sidebar ≤1280px, satu kolom ≤980px
-- [x] i18n EN/ID: kamus UI, overlay terjemahan per lesson, pemilih bahasa dan URL berawalan locale
+- [x] i18n EN/ID: next-intl untuk pesan UI dan URL berawalan locale; overlay lesson tetap terpisah
 
 ### Tooling
 - [x] `npm run check:i18n` ([scripts/check-i18n.ts](scripts/check-i18n.ts))
+- [x] `npm run test:i18n` dan `npm run check:export` untuk pesan UI dan HTML lesson berbahasa
 - [x] Pemeriksa tumpang-tindih di browser ([scripts/check-layout.browser.js](scripts/check-layout.browser.js))
 
 ### Lesson (EN + ID)
@@ -98,8 +101,11 @@ src/
     stage.ts               Stage: setScene (diff + tween), link, paket, kamera, zoom/pan
     svg.ts                 helper svg(), textWidth() via canvas
   i18n/
-    en.ts                  String UI (sumber); id.ts harus punya semua kunci yang sama (dicek TypeScript)
-    index.ts               deteksi bahasa, t(key, vars), L({en,id})
+    en.ts, id.ts           Pesan UI bertingkat; kunci ID disesuaikan dengan EN melalui TypeScript
+    routing.ts             Locale dan prefix URL next-intl
+    request.ts             Konfigurasi locale dan pemuatan pesan di server
+    navigation.ts          Pembentukan URL berbahasa melalui next-intl
+    index.ts               Tipe locale dan opsi pemilih bahasa
   lessons/
     helpers.ts             at(u,v), users(), server(), db(), cache(), lb(), queue(), worker(), cdn(), service(), card(), link(), spread()
     localize.ts            Menerapkan overlay terjemahan
@@ -108,6 +114,8 @@ src/
   ui/store.ts              Penyimpanan progres dan tema yang kompatibel dengan versi lama
 scripts/
   check-i18n.ts            node, dijalankan lewat npm run check:i18n
+  test-i18n.ts             tes ICU dan error pesan UI
+  check-export.ts          validasi HTML statis seluruh lesson dan locale setelah build
   check-layout.browser.js  ditempel di console browser
 ```
 
@@ -348,7 +356,7 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 ### Ide fitur (opsional, setelah lesson)
 - [ ] Search ⌘K (judul lesson, step, istilah)
 - [ ] Deploy ke Vercel / GitHub Pages
-- [ ] Bahasa ketiga (tambah di `LOCALES`, kamus UI, judul di `course.ts`, overlay per lesson)
+- [ ] Bahasa ketiga (routing dan `LOCALES`, kamus UI, judul di `course.ts`, overlay per lesson)
 - [ ] Jadikan pemeriksa layout perintah `npm` (misalnya dengan Playwright) supaya bisa jalan di CI
 
 ---
@@ -378,6 +386,8 @@ search, dan OG image khusus masih pekerjaan mendatang.
 
 - `app/(entry)/` memilih bahasa dan menerjemahkan URL hash lama di client. URL baru berbentuk
   `/en/lessons/<id>/<step>/` dan `/id/lessons/<id>/<step>/`.
+- next-intl mengelola pesan UI dan pembentukan URL. Tidak ada middleware pada static export;
+  layout memvalidasi locale lalu memanggil `setRequestLocale` sebelum memuat pesan.
 - `app/[lang]/` membuat halaman statis untuk setiap lesson siap dan setiap step. Metadata judul,
   deskripsi, dan bahasa alternatif dibuat per halaman; teks lesson ada di HTML hasil build.
 - `components/ScaleLab.tsx` mengelola UI React. `Stage` tetap imperatif, dibuat di effect dan

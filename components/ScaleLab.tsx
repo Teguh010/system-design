@@ -1,28 +1,25 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { allLessons, course, findInCourse, type CourseModule } from '../src/course';
 import { Stage } from '../src/engine/stage';
-import en, { type UiKey } from '../src/i18n/en';
-import id from '../src/i18n/id';
-import { setLocale } from '../src/i18n';
+import { LOCALES, type Locale } from '../src/i18n';
+import { getPathname } from '../src/i18n/navigation';
 import { lb, link, server, spread, users } from '../src/lessons/helpers';
 import type { Lesson, MetricValue, Scene } from '../src/types';
-import { currentTheme, load, markVisited, setLastStep, setTheme } from '../src/ui/store';
+import { currentTheme, load, markVisited, save, setLastStep, setTheme } from '../src/ui/store';
 
-type Locale = 'en' | 'id';
 type Progress = { visited: Record<string, number[]>; last: Record<string, number> };
 type Place = { module: CourseModule; moduleIndex: number; lessonIndex: number };
 const emptyProgress: Progress = { visited: {}, last: {} };
 const openModules = new Set<string>();
-const dict = { en, id };
 const pad2 = (n: number) => String(n).padStart(2, '0');
-const homePath = (locale: Locale) => `/${locale}/`;
-const lessonPath = (locale: Locale, lessonId: string, step: number) => `/${locale}/lessons/${lessonId}/${step}/`;
-const text = (locale: Locale, key: UiKey, vars: Record<string, string | number> = {}) =>
-  (dict[locale][key] ?? en[key]).replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
+const path = (locale: Locale, href: string) => `${getPathname({ locale, href }).replace(/\/$/, '')}/`;
+const homePath = (locale: Locale) => path(locale, '/');
+const lessonPath = (locale: Locale, lessonId: string, step: number) => path(locale, `/lessons/${lessonId}/${step}`);
 const readProgress = (): Progress => ({ visited: load('visited', {}), last: load('last', {}) });
 const seenFor = (progress: Progress, id: string) => new Set(progress.visited[id] ?? []);
 const complete = (progress: Progress, id: string) => {
@@ -59,6 +56,7 @@ function Diagram({ scene, stageRef, jump }: { scene: Scene; stageRef: React.RefO
 }
 
 function Sidebar({ locale, currentId, progress }: { locale: Locale; currentId: string | undefined; progress: Progress }) {
+  const t = useTranslations();
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     const module = course.find((m) => m.lessons.some((l) => l.id === currentId));
@@ -66,10 +64,10 @@ function Sidebar({ locale, currentId, progress }: { locale: Locale; currentId: s
     setOpen(new Set(openModules));
   }, [currentId]);
   const done = allLessons.filter((l) => complete(progress, l.id)).length;
-  return <nav className="course-nav" aria-label={text(locale, 'nav.course')}>
+  return <nav className="course-nav" aria-label={t('nav.course')}>
     <div className="cn-head">
-      <span className="cn-title"><svg viewBox="0 0 20 16" width="18" height="14" aria-hidden="true"><path d="M1 3a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z" /></svg>{text(locale, 'nav.course')}</span>
-      <span className="cn-count">{text(locale, 'nav.lessons', { n: allLessons.length })}</span>
+      <span className="cn-title"><svg viewBox="0 0 20 16" width="18" height="14" aria-hidden="true"><path d="M1 3a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z" /></svg>{t('nav.course')}</span>
+      <span className="cn-count">{t('nav.lessons', { n: allLessons.length })}</span>
     </div>
     <ol className="cn-modules">{course.map((m, mi) => {
       const isOpen = open.has(m.id);
@@ -86,31 +84,32 @@ function Sidebar({ locale, currentId, progress }: { locale: Locale; currentId: s
         </button>
         <ol className="cn-lessons">{m.lessons.map((l) => <li key={l.id}>{l.lesson
           ? <Link href={resumePath(locale, progress, l.id)} className={`cn-lesson${l.id === currentId ? ' is-current' : ''}${complete(progress, l.id) ? ' is-done' : ''}`} aria-current={l.id === currentId ? 'page' : undefined}>{l.title[locale]}</Link>
-          : <span className="cn-lesson is-soon">{l.title[locale]}<em>{text(locale, 'nav.soon')}</em></span>}</li>)}</ol>
+          : <span className="cn-lesson is-soon">{l.title[locale]}<em>{t('nav.soon')}</em></span>}</li>)}</ol>
       </li>;
     })}</ol>
-    <div className="cn-progress"><span>{text(locale, 'nav.progress')}</span><span className="cn-progress-n">{done} / {allLessons.length}</span><div className="bar"><i style={{ width: `${done / allLessons.length * 100}%` }} /></div></div>
+    <div className="cn-progress"><span>{t('nav.progress')}</span><span className="cn-progress-n">{done} / {allLessons.length}</span><div className="bar"><i style={{ width: `${done / allLessons.length * 100}%` }} /></div></div>
   </nav>;
 }
 
 function Home({ locale, progress }: { locale: Locale; progress: Progress }) {
+  const t = useTranslations();
   const stage = useRef<Stage | null>(null);
   useEffect(() => { document.title = 'Scale Lab'; }, []);
   return <div className="home">
     <section className="hero"><div className="hero-text">
-      <p className="eyebrow">{text(locale, 'home.eyebrow')}</p>
-      <h1 dangerouslySetInnerHTML={{ __html: text(locale, 'home.title') }} />
-      <p className="lede">{text(locale, 'home.lede')}</p>
-      <p className="keys" dangerouslySetInnerHTML={{ __html: text(locale, 'home.keys') }} />
+      <p className="eyebrow">{t('home.eyebrow')}</p>
+      <h1>{t.rich('home.title', { em: (chunks) => <em>{chunks}</em> })}</h1>
+      <p className="lede">{t('home.lede')}</p>
+      <p className="keys">{t.rich('home.keys', { kbd: (chunks) => <kbd>{chunks}</kbd> })}</p>
     </div><Diagram scene={HERO} stageRef={stage} jump /></section>
     {course.map((m, mi) => <section className="module" key={m.id}>
       <h2><i className="folder" style={{ '--m': m.color } as CSSProperties} aria-hidden="true" />{pad2(mi + 1)}. {m.title[locale]}</h2>
       <div className="cards">{m.lessons.map((l, li) => {
-        const meta = <div className="lc-meta"><span>{text(locale, 'lesson.of', { i: li + 1, n: m.lessons.length })}</span>{l.lesson && <><span>{text(locale, 'lesson.min', { n: l.lesson.minutes })}</span><span>{text(locale, 'lesson.steps', { n: l.lesson.steps.length })}</span></>}</div>;
-        if (!l.lesson) return <div key={l.id} className="lesson-card is-soon">{meta}<h3>{l.title[locale]}</h3><span className="cta">{text(locale, 'home.soon')}</span></div>;
+        const meta = <div className="lc-meta"><span>{t('lesson.of', { i: li + 1, n: m.lessons.length })}</span>{l.lesson && <><span>{t('lesson.min', { n: l.lesson.minutes })}</span><span>{t('lesson.steps', { n: l.lesson.steps.length })}</span></>}</div>;
+        if (!l.lesson) return <div key={l.id} className="lesson-card is-soon">{meta}<h3>{l.title[locale]}</h3><span className="cta">{t('home.soon')}</span></div>;
         const seen = seenFor(progress, l.id).size;
         const pct = Math.round(Math.min(seen, l.lesson.steps.length) / l.lesson.steps.length * 100);
-        const cta = seen === 0 ? text(locale, 'home.start') : complete(progress, l.id) ? text(locale, 'home.review') : text(locale, 'home.continue');
+        const cta = seen === 0 ? t('home.start') : complete(progress, l.id) ? t('home.review') : t('home.continue');
         return <Link key={l.id} className="lesson-card" href={resumePath(locale, progress, l.id)}>{meta}<h3>{l.title[locale]}</h3><div className="lc-foot"><div className="bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div><span className="cta">{cta} →</span></div></Link>;
       })}</div>
     </section>)}
@@ -121,7 +120,8 @@ function valuesAt(lesson: Lesson, i: number): Record<string, MetricValue> {
   return Object.assign({}, ...lesson.steps.slice(0, i + 1).map((s) => s.metrics));
 }
 
-function Changes({ lesson, index, locale }: { lesson: Lesson; index: number; locale: Locale }) {
+function Changes({ lesson, index }: { lesson: Lesson; index: number }) {
+  const t = useTranslations();
   if (!index) return null;
   const before = valuesAt(lesson, index - 1);
   const after = valuesAt(lesson, index);
@@ -136,12 +136,13 @@ function Changes({ lesson, index, locale }: { lesson: Lesson; index: number; loc
     rows.push(a === undefined || a === '?' || a === '—' ? ['+', `${m.label}: ${b}`] : ['~', `${m.label}: ${a} → ${b}`]);
   }
   if (!rows.length) return null;
-  return <div className="changes"><h3>{text(locale, 'step.changed')}</h3><ul>{rows.map(([sign, content], j) => <li key={j} className={`ch-${sign === '+' ? 'add' : sign === '-' ? 'remove' : 'change'}`}><i aria-hidden="true">{sign === '-' ? '−' : sign}</i><span>{content}</span></li>)}</ul></div>;
+  return <div className="changes"><h3>{t('step.changed')}</h3><ul>{rows.map(([sign, content], j) => <li key={j} className={`ch-${sign === '+' ? 'add' : sign === '-' ? 'remove' : 'change'}`}><i aria-hidden="true">{sign === '-' ? '−' : sign}</i><span>{content}</span></li>)}</ul></div>;
 }
 
 function LessonScreen({ lesson, place, locale, step, progress, onProgress, onStepNavigation }: {
   lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; onProgress: () => void; onStepNavigation: () => void;
 }) {
+  const t = useTranslations();
   const router = useRouter();
   const stage = useRef<Stage | null>(null);
   const timeline = useRef<HTMLOListElement>(null);
@@ -230,33 +231,34 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   }, [index, lesson]);
   return <div className="lesson">
     <section className="center">
-      <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{text(locale, 'lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
-        <div className="l-title-row"><h1>{lesson.title}</h1><div className="pills"><span className="pill-chip p-time">◷ {text(locale, 'lesson.min', { n: lesson.minutes })}</span><span className="pill-chip p-level">▮ {text(locale, `level.${lesson.level}`)}</span><span className="pill-chip p-steps">☰ {text(locale, 'lesson.steps', { n })}</span></div></div><p className="l-summary">{lesson.summary}</p>
+      <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
+        <div className="l-title-row"><h1>{lesson.title}</h1><div className="pills"><span className="pill-chip p-time">◷ {t('lesson.min', { n: lesson.minutes })}</span><span className="pill-chip p-level">▮ {t(`level.${lesson.level}`)}</span><span className="pill-chip p-steps">☰ {t('lesson.steps', { n })}</span></div></div><p className="l-summary">{lesson.summary}</p>
       </header>
       <div className="stage-card"><div className="stage-top">
         <div className="metrics">{lesson.metrics.map((m) => {
           const v = values[m.id] ?? '—';
           return <div className="metric" data-id={m.id} key={m.id}><span className="m-label">{m.label}</span><span className={`m-val${typeof v === 'string' ? '' : ` tone-${v.tone}`}`}>{typeof v === 'string' ? v : v.v}</span></div>;
         })}</div>
-        <div className="controls"><button className="btn small replay" type="button" title="R" onClick={() => stage.current?.replay()}>↻ {text(locale, 'stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${text(locale, 'stage.play')}` : `❚❚ ${text(locale, 'stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {text(locale, 'stage.fit')}</button></div>
+        <div className="controls"><button className="btn small replay" type="button" title="R" onClick={() => stage.current?.replay()}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
       </div><Diagram scene={current.scene} stageRef={stage} jump={false} /><div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
-        const [kind, label] = Array.isArray(l) ? l : [l, text(locale, `packet.${l}`)];
+        const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
         return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
-      })}</div><span className="stage-hint">{text(locale, 'stage.hint')}</span></div></div>
-      <div className="timeline-card"><div className="tl-head"><span>{text(locale, 'lesson.timeline')}</span><span className="tl-count">{text(locale, 'lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
+      })}</div><span className="stage-hint">{t('stage.hint')}</span></div></div>
+      <div className="timeline-card"><div className="tl-head"><span>{t('lesson.timeline')}</span><span className="tl-count">{t('lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
     </section>
-    <aside className="side"><div className="step-card" ref={stepCard}><div className="step-top"><span className="step-no">{text(locale, 'step.label', { i: index + 1, n })}</span><span className={`chip ch-${current.chapter}`}>{text(locale, `chapter.${current.chapter}`)}</span></div>
+    <aside className="side"><div className="step-card" ref={stepCard}><div className="step-top"><span className="step-no">{t('step.label', { i: index + 1, n })}</span><span className={`chip ch-${current.chapter}`}>{t(`chapter.${current.chapter}`)}</span></div>
       <article className="step enter" aria-live="polite" key={index}><h2>{current.title}</h2>{current.body.map((p, i) => p.trimStart().startsWith('<table') ? <div key={i} dangerouslySetInnerHTML={{ __html: p }} /> : <p key={i} dangerouslySetInnerHTML={{ __html: p }} />)}
-        {current.callout && <aside className={`callout co-${current.callout.kind}`}><b>{text(locale, `callout.${current.callout.kind}`)}</b><span dangerouslySetInnerHTML={{ __html: current.callout.text }} /></aside>}
-        <Changes lesson={lesson} index={index} locale={locale} />
+        {current.callout && <aside className={`callout co-${current.callout.kind}`}><b>{t(`callout.${current.callout.kind}`)}</b><span dangerouslySetInnerHTML={{ __html: current.callout.text }} /></aside>}
+        <Changes lesson={lesson} index={index} />
       </article>
-      <nav className="step-nav"><button className="btn prev" type="button" disabled={index === 0} onClick={() => nav(-1)}>← {text(locale, 'step.back')}</button><button className="btn primary next" type="button" onClick={() => nav(1)}>{lesson.steps[index + 1] ? `${text(locale, 'step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${text(locale, 'step.finish')} ✓`}</button></nav>
-      <p className="keys" dangerouslySetInnerHTML={{ __html: text(locale, 'step.keys') }} />
-    </div><div className="learn-card"><h3>{text(locale, 'lesson.learn')}</h3><ul className="learn">{lesson.goals.map((g, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, g.step)} onClick={(event) => onStepLink(event, g.step)} data-step={g.step} className={seen.has(g.step - 1) ? 'is-done' : undefined}><i className="check" aria-hidden="true" />{g.text}</Link></li>)}</ul></div></aside>
+      <nav className="step-nav"><button className="btn prev" type="button" disabled={index === 0} onClick={() => nav(-1)}>← {t('step.back')}</button><button className="btn primary next" type="button" onClick={() => nav(1)}>{lesson.steps[index + 1] ? `${t('step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${t('step.finish')} ✓`}</button></nav>
+      <p className="keys">{t.rich('step.keys', { kbd: (chunks) => <kbd>{chunks}</kbd> })}</p>
+    </div><div className="learn-card"><h3>{t('lesson.learn')}</h3><ul className="learn">{lesson.goals.map((g, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, g.step)} onClick={(event) => onStepLink(event, g.step)} data-step={g.step} className={seen.has(g.step - 1) ? 'is-done' : undefined}><i className="check" aria-hidden="true" />{g.text}</Link></li>)}</ul></div></aside>
   </div>;
 }
 
 export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { locale: Locale; lessonId?: string; step?: number; lesson?: Lesson }) {
+  const t = useTranslations();
   const router = useRouter();
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [navOpen, setNavOpen] = useState(false);
@@ -269,7 +271,7 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
     document.documentElement.dataset.theme = saved === 'dark' || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   }, [refreshProgress]);
   useEffect(() => {
-    setLocale(locale);
+    save('lang', locale);
   }, [locale]);
   useEffect(() => {
     setNavOpen(false);
@@ -290,9 +292,9 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
     router.push(lesson ? lessonPath(next, lesson.id, Math.max(1, Math.min(lesson.steps.length, Number.isFinite(currentStep) ? Math.trunc(currentStep) : 1))) : homePath(next));
   };
   return <>
-    <header className="top"><button className="icon-btn menu" type="button" aria-label={text(locale, 'nav.menu')} aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>☰</button>
+    <header className="top"><button className="icon-btn menu" type="button" aria-label={t('nav.menu')} aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>☰</button>
       <Link className="brand" href={homePath(locale)}><svg viewBox="0 0 28 28" width="22" height="22" aria-hidden="true"><polygon points="14,3 25,8.5 14,14 3,8.5" className="logo-top" /><polygon points="3,8.5 14,14 14,25 3,19.5" className="logo-l" /><polygon points="25,8.5 14,14 14,25 25,19.5" className="logo-r" /></svg>Scale Lab</Link>
-      <div className="top-right"><div className="lang" role="group" aria-label={text(locale, 'lang.label')}>{([{ id: 'en', short: 'EN', name: 'English' }, { id: 'id', short: 'ID', name: 'Bahasa Indonesia' }] as const).map((l) => <button key={l.id} type="button" title={l.name} aria-pressed={l.id === locale} onClick={() => switchLocale(l.id)}>{l.short}</button>)}</div><button className="icon-btn theme" type="button" title={text(locale, 'theme.toggle')} aria-label={text(locale, 'theme.toggle')} onClick={() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark')}>◐</button></div>
+      <div className="top-right"><div className="lang" role="group" aria-label={t('lang.label')}>{LOCALES.map((l) => <button key={l.id} type="button" title={l.name} aria-pressed={l.id === locale} onClick={() => switchLocale(l.id)}>{l.short}</button>)}</div><button className="icon-btn theme" type="button" title={t('theme.toggle')} aria-label={t('theme.toggle')} onClick={() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark')}>◐</button></div>
     </header>
     <div className="shell"><Sidebar locale={locale} currentId={lesson?.id} progress={progress} /><div className="nav-scrim" onClick={closeNav} /><main id="view">{lesson && found ? <LessonScreen key={`${locale}/${lesson.id}`} lesson={lesson} place={found} locale={locale} step={step} progress={progress} onProgress={refreshProgress} onStepNavigation={closeNav} /> : <Home locale={locale} progress={progress} />}</main></div>
   </>;

@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import { hasLocale, NextIntlClientProvider } from 'next-intl';
+import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { routing } from '../../src/i18n/routing';
 import '../../src/style.css';
 
 export const metadata: Metadata = {
@@ -9,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export function generateStaticParams() {
-  return [{ lang: 'en' }, { lang: 'id' }];
+  return routing.locales.map((lang) => ({ lang }));
 }
 
 const themeScript = `try {
@@ -23,8 +26,10 @@ export default async function LocaleLayout({ children, params }: {
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  if (lang !== 'en' && lang !== 'id') notFound();
+  if (!hasLocale(routing.locales, lang)) notFound();
+  setRequestLocale(lang);
+  const messages = await getMessages({ locale: lang });
   return <html lang={lang} suppressHydrationWarning><head>
     <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-  </head><body>{children}</body></html>;
+  </head><body><NextIntlClientProvider locale={lang} messages={messages}>{children}</NextIntlClientProvider></body></html>;
 }
