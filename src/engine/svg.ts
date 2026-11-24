@@ -31,4 +31,4 @@ export function textWidth(text: string, size: number, weight = 400): number {
   return w;
 }
 
-document.fonts?.addEventListener('loadingdone', () => widths.clear());
+if (typeof document !== 'undefined') document.fonts?.addEventListener('loadingdone', () => widths.clear());

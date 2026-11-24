@@ -1,11 +1,21 @@
 import type { Locale } from '../i18n/index.ts';
 import type { Entity, Lesson, LessonOverlay, MetricValue, Scene } from '../types.ts';
 
-const overlays = import.meta.glob<{ default: LessonOverlay }>('./i18n/*/*.ts');
+const overlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
+  'id/request-lifecycle': () => import('./i18n/id/request-lifecycle.ts'),
+  'id/latency-throughput': () => import('./i18n/id/latency-throughput.ts'),
+  'id/napkin-math': () => import('./i18n/id/napkin-math.ts'),
+  'id/vertical-horizontal': () => import('./i18n/id/vertical-horizontal.ts'),
+  'id/load-balancing': () => import('./i18n/id/load-balancing.ts'),
+  'id/stateless': () => import('./i18n/id/stateless.ts'),
+  'id/caching': () => import('./i18n/id/caching.ts'),
+  'id/cdn': () => import('./i18n/id/cdn.ts'),
+  'id/url-shortener': () => import('./i18n/id/url-shortener.ts'),
+};
 
 const PREFIX = /^([!✓#] )/;
 
-function apply(lesson: Lesson, o: LessonOverlay): Lesson {
+export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
   const labels = o.labels ?? {};
   const tr = (s: string | undefined) => (s === undefined ? s : (labels[s] ?? s));
   const line = (s: string) => {
@@ -60,9 +70,9 @@ export async function localize(lesson: Lesson, locale: Locale): Promise<Lesson> 
   const key = `${locale}/${lesson.id}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const load = overlays[`./i18n/${locale}/${lesson.id}.ts`];
+  const load = overlays[key];
   if (!load) return lesson;
-  const out = apply(lesson, (await load()).default);
+  const out = applyLessonOverlay(lesson, (await load()).default);
   cache.set(key, out);
   return out;
 }

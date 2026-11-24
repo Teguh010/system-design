@@ -13,7 +13,8 @@ request mengalir, server tumbang, metrik berubah, dan teks di panel kanan menjel
 Inspirasinya [Designed to Scale](https://designed-to-scale.vercel.app/). **Semua teks, angka, dan
 skenario harus ditulis sendiri**, jangan menyalin dari situs itu atau dari sumber lain.
 
-- Stack: TypeScript + Vite + SVG biasa. **Tanpa** framework UI, tanpa Canvas/WebGL, tanpa library chart.
+- Stack saat ini: Next.js App Router + React + TypeScript; engine tetap SVG imperatif tanpa
+  Canvas/WebGL. Detail migrasi dan batasannya ada di [bagian 8](#8-migrasi-ke-nextjs).
 - Materi utama berbahasa **Inggris**. Terjemahan **Bahasa Indonesia** wajib untuk setiap lesson.
 - Tidak ada backend. Progres disimpan di `localStorage` dengan prefix `stl:`.
 
@@ -21,9 +22,10 @@ Perintah:
 
 ```sh
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:3000
 npm run typecheck
-npm run build        # tsc + vite build
+npm run build        # static export ke out/
+npm run preview      # sajikan out/ lewat Python 3
 npm run check:i18n   # validasi terjemahan
 ```
 
@@ -32,7 +34,7 @@ npm run check:i18n   # validasi terjemahan
 ## 2. Status (checklist)
 
 ### Fondasi
-- [x] Vite + TypeScript strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`)
+- [x] Next.js App Router + TypeScript strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`)
 - [x] Engine isometrik: proyeksi, bentuk, depth sort, link yang dipotong di tepi entitas, paket data
 - [x] Transisi antar-scene: diff berdasarkan id, entitas meluncur, muncul, dan memudar
 - [x] Kamera: auto-fit, tetap diam kalau scene muat, zoom (scroll/dblclick), pan (drag), Fit
@@ -49,7 +51,7 @@ npm run check:i18n   # validasi terjemahan
 - [x] Layout 3 kolom: sidebar kursus | stage + metrik + timeline | panel step + "You'll learn"
 - [x] Home: hero animasi + kartu lesson per modul + progres
 - [x] Responsif: drawer sidebar ≤1280px, satu kolom ≤980px
-- [x] i18n EN/ID: kamus UI, overlay terjemahan per lesson (lazy-loaded), pemilih bahasa, `?lang=`
+- [x] i18n EN/ID: kamus UI, overlay terjemahan per lesson, pemilih bahasa dan URL berawalan locale
 
 ### Tooling
 - [x] `npm run check:i18n` ([scripts/check-i18n.ts](scripts/check-i18n.ts))
@@ -84,10 +86,11 @@ npm run check:i18n   # validasi terjemahan
 ## 3. Peta kode
 
 ```
+app/                       Route statis, metadata, dan pengalihan URL lama
+components/                Antarmuka React dan integrasi Stage
 src/
   types.ts                 Tipe data: Entity, Link, Flow, Scene, Step, Lesson, LessonOverlay
   course.ts                Daftar modul & lesson (judul EN/ID, warna modul, ready/soon)
-  main.ts                  Shell aplikasi, router hash (#/<lesson>/<step>), ganti bahasa
   style.css                Semua style; warna lewat CSS variable (light + dark)
   engine/
     iso.ts                 project(x,y,z), convexHull, rayExit
@@ -102,8 +105,7 @@ src/
     localize.ts            Menerapkan overlay terjemahan
     <lesson-id>.ts         Satu file per lesson (sumber EN)
     i18n/id/<lesson-id>.ts Terjemahan Indonesia
-  ui/
-    sidebar.ts, home.ts, lesson.ts, store.ts, dom.ts
+  ui/store.ts              Penyimpanan progres dan tema yang kompatibel dengan versi lama
 scripts/
   check-i18n.ts            node, dijalankan lewat npm run check:i18n
   check-layout.browser.js  ditempel di console browser
@@ -252,7 +254,7 @@ ditangkap **dari diagramnya saja**, tanpa membaca teks:
 1. Tulis `src/lessons/<id>.ts` (EN) mengikuti 4.1, **4.1a**, **4.1b**, dan 4.2.
 2. Di `src/course.ts`: import lesson-nya, lalu ganti `soon('<id>', …)` dengan `ready(<lesson>, '<Judul ID>')`.
 3. `npm run typecheck` harus bersih.
-4. Buka `npm run dev` → `#/<id>/1`, jalankan semua step, dan pastikan tidak ada error di console.
+4. Buka `npm run dev` → `/en/lessons/<id>/1/` dan `/id/lessons/<id>/1/`, jalankan semua step, dan pastikan tidak ada error di console.
 5. Tempel [scripts/check-layout.browser.js](scripts/check-layout.browser.js) di console dengan
    `?lang=en` sampai `Layout OK`. Perbaiki posisi kalau ada tumpang-tindih.
 6. Tulis `src/lessons/i18n/id/<id>.ts` mengikuti 4.3 → `npm run check:i18n` harus `OK`.
@@ -340,6 +342,9 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 - [ ] `cdn` (label RTT di garis)
 - [ ] `url-shortener`
 
+### Platform
+- [x] Migrasi UI ke Next.js (bagian 8).
+
 ### Ide fitur (opsional, setelah lesson)
 - [ ] Search ⌘K (judul lesson, step, istilah)
 - [ ] Deploy ke Vercel / GitHub Pages
@@ -358,6 +363,40 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 - Label Indonesia lebih panjang. Kartu yang pas di EN bisa menabrak di ID, jadi selalu cek kedua bahasa.
 - `exactOptionalPropertyTypes` aktif. Untuk properti opsional kondisional, pakai
   `...(cond && { prop })`, jangan `prop: cond ? x : undefined`.
-- Port 5173 mungkin sudah dipakai `npm run dev` milik user. Jangan menjalankan server kedua di port yang sama.
+- Periksa port sebelum menjalankan server tambahan; jangan hentikan server milik user.
 - Pil label garis ada di layer tersendiri (`layer-labels`), di atas paket dan di bawah entitas. Kalau
   menambah elemen per-link lain, ingat untuk ikut menghapusnya saat link dibuang.
+
+---
+
+## 8. Migrasi ke Next.js
+
+Status: **implementasi App Router dan static export selesai**. Backend, Practice, Design Lab,
+search, dan OG image khusus masih pekerjaan mendatang.
+
+### Pola implementasi
+
+- `app/(entry)/` memilih bahasa dan menerjemahkan URL hash lama di client. URL baru berbentuk
+  `/en/lessons/<id>/<step>/` dan `/id/lessons/<id>/<step>/`.
+- `app/[lang]/` membuat halaman statis untuk setiap lesson siap dan setiap step. Metadata judul,
+  deskripsi, dan bahasa alternatif dibuat per halaman; teks lesson ada di HTML hasil build.
+- `components/ScaleLab.tsx` mengelola UI React. `Stage` tetap imperatif, dibuat di effect dan
+  dihancurkan saat unmount. Animasi dan koordinat per frame tidak disimpan dalam state React.
+- Lesson dan overlay tetap data terpisah. `localize.ts` memuat overlay di server; saat menambah
+  terjemahan, daftarkan loader di sana dan jalankan `npm run check:i18n`.
+- Kunci progres dan preferensi tetap `stl:visited`, `stl:last`, `stl:theme`, dan `stl:lang`.
+  Progres berasal dari `localStorage` setelah hydration; angka awal dapat sebentar terlihat kosong.
+- Static export tidak menyediakan route handler, server action, atau redirect server dinamis.
+  Backend nanti memerlukan pilihan deployment dan perubahan konfigurasi serta implementasi,
+  bukan sekadar menghapus `output: 'export'`. Deployment di subpath memerlukan konfigurasi tambahan.
+- `scripts/check-layout.browser.js` adalah pemeriksa heuristik, bukan pengganti review visual.
+  Jalankan di origin pengujian: script mengunjungi seluruh step dan sementara mengubah progres.
+
+### Checklist
+
+- [x] Setup Next.js, static export, routing EN/ID dan metadata.
+- [x] Migrasi shell, player, keyboard, tema dan integrasi SVG ke React.
+- [x] Pengalihan URL hash lama dan kompatibilitas kunci progres.
+- [x] Perbarui pemeriksa i18n dan layout serta hapus entry point Vite.
+- [ ] Ukur performa dan ukuran bundle sebelum mengklaim peningkatan atau target FPS tertentu.
+- [ ] Terus audit tampilan semua step pada berbagai viewport dan tema saat lesson berubah.

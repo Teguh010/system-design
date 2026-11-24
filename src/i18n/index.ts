@@ -16,6 +16,7 @@ const isLocale = (v: unknown): v is Locale => LOCALES.some((l) => l.id === v);
 
 /** `?lang=` in the URL, then the saved choice, then the browser's languages, then English. */
 function detect(): Locale {
+  if (typeof window === 'undefined') return 'en';
   const fromUrl = new URLSearchParams(location.search).get('lang');
   if (isLocale(fromUrl)) return fromUrl;
   try {
@@ -33,12 +34,12 @@ function detect(): Locale {
 }
 
 let current: Locale = detect();
-document.documentElement.lang = current;
 
 export const getLocale = () => current;
 
 export function setLocale(locale: Locale) {
   current = locale;
+  if (typeof document === 'undefined') return;
   document.documentElement.lang = locale;
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(locale));

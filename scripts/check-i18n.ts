@@ -4,12 +4,17 @@
 import { existsSync } from 'node:fs';
 const root = new URL('../src/', import.meta.url).pathname;
 const { allLessons } = await import(root + 'course.ts');
+const { localize, applyLessonOverlay } = await import(root + 'lessons/localize.ts');
 let problems = 0;
 for (const entry of allLessons) {
   const lesson = entry.lesson; if (!lesson) continue;
   const file = `${root}lessons/i18n/id/${lesson.id}.ts`;
   if (!existsSync(file)) { problems++; console.log(lesson.id, 'NO TRANSLATION'); continue; }
   const o = (await import(file)).default;
+  const localized = await localize(lesson, 'id');
+  if (localized === lesson || JSON.stringify(localized) !== JSON.stringify(applyLessonOverlay(lesson, o))) {
+    problems++; console.log(lesson.id, 'TRANSLATION LOADER MISSING OR INCORRECT');
+  }
   const strings = new Set<string>();
   const add = (s?: string) => s && strings.add(s);
   lesson.legend.forEach((l: any) => Array.isArray(l) && add(l[1]));
@@ -34,3 +39,4 @@ for (const entry of allLessons) {
   if (unused.length) { problems++; console.log(lesson.id, 'UNUSED label keys:', unused); }
 }
 console.log(problems ? `${problems} problem(s)` : 'OK');
+if (problems) process.exitCode = 1;

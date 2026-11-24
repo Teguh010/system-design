@@ -1,16 +1,24 @@
 # Scale Lab
 
 Interactive system design lessons: isometric SVG diagrams you step through, with live traffic, failures and metrics.
-Inspired by [Designed to Scale](https://designed-to-scale.vercel.app/). No UI framework, no canvas/WebGL: TypeScript, Vite and plain SVG.
+Inspired by [Designed to Scale](https://designed-to-scale.vercel.app/). The UI uses Next.js and React;
+the animation engine remains framework-independent TypeScript and SVG, without Canvas/WebGL.
 
 > **Continuing the work?** Read [PLAN.md](PLAN.md) first: progress checklist, roadmap, and the authoring rules every lesson follows.
 
+Requires Node.js 22.18 or newer.
+
 ```sh
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # typecheck + production build into dist/
+npm run dev        # http://localhost:3000
+npm run typecheck
+npm run build      # static production export into out/
+npm run preview    # serve out/ locally with Python 3
 npm run check:i18n # every lesson translation matches its English source
 ```
+
+The export can be hosted on a static web server; no backend is required. Future server-side features
+will require a suitable deployment and a change to the export configuration.
 
 **Keys:** `←` `→` step · `Space` pause traffic · `R` replay step · `F` fit view · drag to pan · scroll / double-click to zoom.
 
@@ -19,6 +27,8 @@ npm run check:i18n # every lesson translation matches its English source
 The engine is written once; lessons are plain data.
 
 ```
+app/               Next.js App Router, localized pages and legacy-link entry point
+components/        React interface and SVG stage integration
 src/
   course.ts        9 modules / 40 lessons; unwritten lessons show as "coming soon"
   engine/
@@ -32,7 +42,7 @@ src/
     localize.ts    applies a lesson translation, loaded on demand
     *.ts           one file per lesson (English source)
     i18n/<locale>/<lesson-id>.ts   translations
-  ui/              shell views: sidebar, home, lesson player; localStorage progress
+  ui/store.ts      compatible localStorage progress and theme helpers
 ```
 
 Each step describes a **scene** — what exists, how it's connected and what traffic flows:
@@ -57,21 +67,23 @@ already fits). Metrics not set on a step carry over from earlier steps.
 
 ## Languages
 
-English and Bahasa Indonesia. The language comes from `?lang=`, then the saved choice, then the browser, then English.
+English and Bahasa Indonesia use `/en/` and `/id/` URLs. At `/`, `?lang=` takes precedence, then the
+saved choice, then the browser language, then English. Legacy `#/<lesson>/<step>` links at `/` are
+redirected in the browser, preserving their lesson and step.
 
 - **UI strings** live in `src/i18n/en.ts`; `id.ts` is typed against it, so a missing key is a type error.
 - **Lessons** are written in English. A translation (`src/lessons/i18n/id/<lesson-id>.ts`, type `LessonOverlay`)
   matches prose by position (step *i*, paragraph *j*) and short diagram strings — labels, card lines, metric values,
-  legend — by their exact English text. Anything missing falls back to English. Translations are split into
-  separate chunks and only downloaded when that language is chosen.
+  legend — by their exact English text. Anything missing falls back to English.
 - Module and lesson titles for the sidebar are in `src/course.ts` as `{ en, id }` pairs.
 
-To add a language: add it to `LOCALES` in `src/i18n/index.ts`, add a UI dictionary next to `id.ts`, and add
-titles in `course.ts`; lesson translations can follow one by one.
+To add a language, extend the locale type, dictionaries, static route generation, lesson overlay loaders,
+and course titles; verify both prerendered pages and client navigation.
 
 ## Adding a lesson
 
 1. Create `src/lessons/<id>.ts` exporting a `Lesson` (see `src/types.ts`).
 2. In `src/course.ts`, replace the matching `soon(...)` entry with `ready(lesson, '<Indonesian title>')`.
-3. Optionally add `src/lessons/i18n/id/<id>.ts`, then run `npm run check:i18n`.
-4. Open `#/<id>/1`.
+3. Add `src/lessons/i18n/id/<id>.ts`, register its loader in `src/lessons/localize.ts`,
+   then run `npm run check:i18n`.
+4. Open `/en/lessons/<id>/1/` and `/id/lessons/<id>/1/`.
