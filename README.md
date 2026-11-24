@@ -3,6 +3,8 @@
 Interactive system design lessons: isometric SVG diagrams you step through, with live traffic, failures and metrics.
 Inspired by [Designed to Scale](https://designed-to-scale.vercel.app/). No UI framework, no canvas/WebGL: TypeScript, Vite and plain SVG.
 
+> **Continuing the work?** Read [PLAN.md](PLAN.md) first: progress checklist, roadmap, and the authoring rules every lesson follows.
+
 ```sh
 npm install
 npm run dev        # http://localhost:5173

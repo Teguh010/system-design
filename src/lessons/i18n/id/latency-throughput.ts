@@ -113,7 +113,7 @@ const overlay: LessonOverlay = {
       short: 'Tambah worker',
       title: 'Tambah worker',
       body: [
-        'Kapasitas bertambah seiring jumlah worker. Empat worker bisa menyelesaikan 80 request per detik; dengan 30 yang datang, masing-masing sibuk di bawah 40% dan berada di bagian kurva yang datar. Antrean surut dan latency turun kembali mendekati biaya pekerjaannya.',
+        'Kapasitas bertambah seiring jumlah worker. Tambah tiga lagi, semuanya mengambil request berikutnya dari antrean yang sama, sehingga tidak ada yang menganggur sementara yang lain kewalahan. Empat worker bisa menyelesaikan 80 request per detik; dengan 30 yang datang, masing-masing sibuk di bawah 40% dan berada di bagian kurva yang datar. Antrean surut dan latency turun kembali mendekati biaya pekerjaannya.',
         'Kapasitas tambahan menyembuhkan overload. Tapi itu tidak membantu request yang memang lambat dengan sendirinya — yang itu butuh query lebih cepat atau kerja lebih sedikit per request.',
       ],
     },

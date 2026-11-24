@@ -97,7 +97,7 @@ const overlay: LessonOverlay = {
       title: 'Butuh berapa server?',
       body: [
         'Server API stateless di hardware modern menangani antara beberapa ratus sampai beberapa ribu request sederhana per detik. Pakai <b>1.000</b> sebagai angka perencanaan, lalu cek nanti dengan load test.',
-        '4.500 ÷ 1.000 ≈ 5 server yang bekerja habis-habisan. Kamu tidak mau bekerja habis-habisan (ingat titik tekuk pada kurva), jadi targetkan sekitar 70%: kira-kira 7, ditambah satu cadangan supaya crash atau deploy tidak membuatmu kewalahan. <b>Sekitar delapan server</b> — armada kecil, bukan satu mesin dan bukan seratus.',
+        '4.500 ÷ 1.000 ≈ 5 server yang bekerja habis-habisan. Kamu tidak mau bekerja habis-habisan (ingat titik tekuk pada kurva), jadi targetkan sekitar 70%: kira-kira 7, ditambah satu cadangan supaya crash atau deploy tidak membuatmu kewalahan. <b>Sekitar delapan server</b> — armada kecil, bukan satu mesin dan bukan seratus. Menyebar request ke server-server itu adalah tugas load balancer (Modul 02).',
       ],
     },
     {
@@ -113,7 +113,7 @@ const overlay: LessonOverlay = {
       title: 'Bandwidth: di mana byte-nya berada',
       body: [
         'Byte terbanyak ada di sisi baca: 5 juta user × 20 foto × 3 MB ≈ 300 TB dikirim per hari — sekitar <b>3 GB per detik</b> secara rata-rata, atau 24 Gbit/s, dan lebih tinggi lagi saat puncak.',
-        'Segelintir server aplikasi tidak seharusnya mengirim sebanyak itu. Layani gambar dari <b>CDN</b>, dan simpan versi yang sudah diperkecil: layar ponsel jarang butuh file asli 3 MB kalau versi 200 KB terlihat sama saja. Memperkecil gambar saja sudah memangkas egress sekitar 15×.',
+        'Segelintir server aplikasi tidak seharusnya mengirim sebanyak itu. Layani gambar dari <b>CDN</b> (Modul 02), dan simpan versi yang sudah diperkecil: layar ponsel jarang butuh file asli 3 MB kalau versi 200 KB terlihat sama saja. Memperkecil gambar saja sudah memangkas egress sekitar 15×.',
       ],
       callout: 'Perkiraan bandwidth biasanya menjadi alasan utama kenapa CDN dan resize gambar diperlukan.',
     },
@@ -122,7 +122,7 @@ const overlay: LessonOverlay = {
       title: 'Apa yang muat di memori?',
       body: [
         'Jumlah tayangan mengikuti power law: sebagian kecil resep mendapat sebagian besar trafik. Kalau 20% data resep terpanas dalam setahun — sekitar 75 GB — disimpan di memori, sebagian besar pembacaan tidak pernah menyentuh database.',
-        '75 GB muat di satu atau dua node cache. Hitungan dua baris mengubah pertanyaan “apakah kita butuh lapisan cache raksasa?” menjadi “cukup beberapa mesin Redis”.',
+        '75 GB muat di satu atau dua node cache (caching dibahas di Modul 02). Hitungan dua baris mengubah pertanyaan “apakah kita butuh lapisan cache raksasa?” menjadi “cukup beberapa mesin Redis”.',
       ],
     },
     {

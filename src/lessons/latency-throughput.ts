@@ -1,5 +1,5 @@
 import type { Entity, Flow, Lesson, Link, Scene } from '../types.ts';
-import { card, db, lb, link, queue, server, service, spread, users } from './helpers.ts';
+import { card, db, link, queue, server, service, spread, users } from './helpers.ts';
 
 const FANS = users(0, 0, { label: 'fans' });
 const API = server(20, 0, { label: 'ticket API', sub: '1 worker' });
@@ -15,12 +15,14 @@ const WORKERS = { api2: -21, api: -7, api3: 7, api4: 21 } as const;
 const workerIds = Object.keys(WORKERS) as (keyof typeof WORKERS)[];
 
 function fleet(opts: { extra?: Record<string, Entity>; links?: Record<string, Link>; flows?: Flow[]; slowShare?: number } = {}): Scene {
-  const entities: Record<string, Entity> = { fans: FANS, lb: lb(10, 0, { label: 'load balancer' }), ...opts.extra };
-  const links: Record<string, Link> = { fl: link('fans', 'lb'), ...opts.links };
+  // One shared line feeding several workers: whichever worker is free takes the next request.
+  const entities: Record<string, Entity> = { fans: FANS, line: LINE };
+  const links: Record<string, Link> = { fl: link('fans', 'line'), ...opts.links };
   workerIds.forEach((id, i) => {
     entities[id] = server(20, WORKERS[id], { label: `worker ${i + 1}` });
-    links[`l${id}`] = link('lb', id);
+    links[`l${id}`] = link('line', id);
   });
+  Object.assign(entities, opts.extra);
   const routes = workerIds.map((id) => ['fl', `l${id}`]);
   const flows: Flow[] = [...spread(routes, 3, { bounce: true })];
   if (opts.slowShare) flows.push(...spread(routes, opts.slowShare, { kind: 'slow', bounce: true, speed: 40 }));
@@ -145,7 +147,7 @@ export const latencyThroughput: Lesson = {
       chapter: 'solution',
       title: 'Add workers',
       body: [
-        'Capacity scales with workers. Four workers can finish 80 requests a second; with 30 arriving, each is under 40% busy and sits on the flat part of the curve. The line drains and latency falls back to roughly the cost of the work.',
+        'Capacity scales with workers. Add three more, all taking the next request from the same waiting line, so none sits idle while another is swamped. Four workers can finish 80 requests a second; with 30 arriving, each is under 40% busy and sits on the flat part of the curve. The line drains and latency falls back to roughly the cost of the work.',
         'More capacity cures overload. It does nothing for a request that is slow on its own — that needs a faster query or less work per request.',
       ],
       metrics: {

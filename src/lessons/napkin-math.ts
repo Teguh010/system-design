@@ -19,6 +19,7 @@ const lonely = (extra: Record<string, Entity>, rate = 2): Scene => ({
 });
 
 // Eight servers on an arc around the load balancer, so no link crosses another server.
+// Components taught in Module 02 (load balancer, CDN, cache) are drawn as ghosts: the numbers ask for them.
 const GRID: [string, number, number][] = ['s2', 's3', 's4', 's1', 's5', 's6', 's7', 's8'].map((id, i) => {
   const a = ((-70 + i * 20) * Math.PI) / 180;
   const r = 270;
@@ -29,7 +30,7 @@ const GRID: [string, number, number][] = ['s2', 's3', 's4', 's1', 's5', 's6', 's
 function system(opts: { cdn?: boolean; cache?: boolean; card?: Entity } = {}): Scene {
   const entities: Record<string, Entity> = {
     users: CROWD,
-    lb: lb(12, 0, { label: 'load balancer' }),
+    lb: lb(12, 0, { label: 'load balancer', ghost: true }),
     s1: server(24, 0, { label: '8 × app server' }),
     meta: db(38, -8, { label: 'recipe db', sub: '~365 GB / year' }),
     photos: db(38, 10, { label: 'object storage', sub: '~220 TB / year' }),
@@ -45,13 +46,13 @@ function system(opts: { cdn?: boolean; cache?: boolean; card?: Entity } = {}): S
     { route: ['ul', 'ls', 'sp'], kind: 'write', rate: 0.4 },
   ];
   if (opts.cdn) {
-    entities.cdn = cdn(16, 18, { label: 'CDN', sub: 'resized photos' });
+    entities.cdn = cdn(16, 18, { label: 'CDN', sub: 'resized photos', ghost: true });
     links.uc = link('users', 'cdn');
     links.cp = link('cdn', 'photos', { dashed: true });
     flows.push({ route: ['uc'], rate: 4, bounce: true }, { route: ['cp'], kind: 'slow', rate: 0.3, bounce: true });
   }
   if (opts.cache) {
-    entities.cache = cache(24, -20, { label: 'cache', sub: 'hot 20% ≈ 75 GB' });
+    entities.cache = cache(24, -20, { label: 'cache', sub: 'hot 20% ≈ 75 GB', ghost: true });
     links.sc = link('s1', 'cache');
     flows[0] = { route: ['ul', 'ls', 'sc'], rate: 2.2, bounce: true };
     flows.push({ route: ['ul', 'ls', 'sm'], kind: 'slow', rate: 0.4, bounce: true });
@@ -122,13 +123,13 @@ export const napkinMath: Lesson = {
       title: 'How many servers?',
       body: [
         'A stateless API server on modern hardware handles somewhere between a few hundred and a few thousand simple requests a second. Take <b>1,000</b> as a planning number and check it with a load test later.',
-        '4,500 ÷ 1,000 ≈ 5 servers running flat out. You don’t want flat out (remember the knee of the curve), so aim for about 70%: roughly 7, plus one spare so a crash or a deploy doesn’t tip you over. <b>About eight servers</b> — a small fleet, not one machine and not a hundred.',
+        '4,500 ÷ 1,000 ≈ 5 servers running flat out. You don’t want flat out (remember the knee of the curve), so aim for about 70%: roughly 7, plus one spare so a crash or a deploy doesn’t tip you over. <b>About eight servers</b> — a small fleet, not one machine and not a hundred. Spreading requests across them is the job of a load balancer (Module 02).',
       ],
       metrics: { servers: '~8' },
       scene: {
         entities: {
           users: CROWD,
-          lb: lb(10, 0, { label: 'load balancer' }),
+          lb: lb(10, 0, { label: 'load balancer', ghost: true }),
           ...Object.fromEntries(GRID.map(([id, u, v]) => [id, server(u, v)])),
           card: card(44, 0, 'Servers', ['1 server   ≈ 1,000 req/s', '4,500 / 1,000 ≈ 5 at 100%', 'at 70% → 7, +1 spare', '✓ ~8 servers']),
         },
@@ -159,7 +160,7 @@ export const napkinMath: Lesson = {
       title: 'Bandwidth: where the bytes are',
       body: [
         'Reads are where the bytes are: 5 million users × 20 photos × 3 MB ≈ 300 TB served per day — about <b>3 GB per second</b> on average, or 24 Gbit/s, and more at peak.',
-        'A handful of app servers should never push that. Serve images from a <b>CDN</b>, and store resized versions: a phone screen rarely needs the 3 MB original when a 200 KB version looks the same. Resizing alone cuts egress about 15×.',
+        'A handful of app servers should never push that. Serve images from a <b>CDN</b> (Module 02), and store resized versions: a phone screen rarely needs the 3 MB original when a 200 KB version looks the same. Resizing alone cuts egress about 15×.',
       ],
       callout: { kind: 'tip', text: 'Bandwidth estimates are usually where CDNs and image resizing justify themselves.' },
       metrics: { egress: { v: '~3 GB/s', tone: 'warn' } },
@@ -174,7 +175,7 @@ export const napkinMath: Lesson = {
       title: 'What fits in memory?',
       body: [
         'Views follow a power law: a small share of recipes gets most of the traffic. If the hottest 20% of a year’s recipe data — about 75 GB — sits in memory, most reads never touch the database.',
-        '75 GB fits on one or two cache nodes. A two-line calculation turns “do we need a huge caching tier?” into “a couple of Redis boxes”.',
+        '75 GB fits on one or two cache nodes (caching is covered in Module 02). A two-line calculation turns “do we need a huge caching tier?” into “a couple of Redis boxes”.',
       ],
       scene: system({
         cdn: true,
