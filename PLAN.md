@@ -79,8 +79,9 @@ npm run check:export # periksa HTML lesson setelah build
 | 03 | Data & Storage | Indexes | `indexes` | [x] |
 | 03 | Data & Storage | Storage Engines | `storage-engines` | [x] |
 | 03 | Data & Storage | Replication | `replication` | [x] |
+| 03 | Data & Storage | Sharding | `sharding` | [x] |
 
-**13 / 40 selesai.** Sisanya ada di bagian 6.
+**14 / 40 selesai.** Sisanya ada di bagian 6.
 
 ### Riwayat revisi penting
 - `replication` pilot **lebih baik dari referensi**: step 1 satu DB tanpa replica, kartu on-call,
@@ -425,14 +426,14 @@ Urutan pengerjaan yang disarankan: modul 03 → 04 → 05 → 06 → 07 → 08 �
 Skenario di bawah ini hanya usulan. Boleh diganti, asalkan tetap satu skenario konkret per lesson dan
 tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mungkin perlu ditambahkan.
 
-### 03 · Data & Storage (4/11)
+### 03 · Data & Storage (5/11)
 | Lesson | id | Usulan skenario / poin | Engine |
 |---|---|---|---|
 | [x] SQL vs NoSQL | `sql-nosql` | Aplikasi event/tiket: relasi & transaksi vs dokumen/key-value; pola akses menentukan pilihan | — |
 | [x] Indexes | `indexes` | Pencarian pesanan per email: full scan vs B-tree, index komposit, biaya tulis | bentuk **tree/B-tree** (node bertingkat) |
 | [x] Storage Engines | `storage-engines` | B-tree vs LSM (memtable, SSTable, compaction), write vs read amplification | bentuk **tumpukan file/level** (`stack`) |
 | [x] Replication | `replication` | Leader + follower, read replica, replication lag, failover, sinkron vs asinkron | — |
-| [ ] Sharding | `sharding` | Data user melebihi satu DB: range vs hash, hot shard, resharding | — |
+| [x] Sharding | `sharding` | Framebag metadata foto: range vs hash, hot tenant, scatter-gather, resharding | — |
 | [ ] Consistent Hashing | `consistent-hashing` | Cache cluster bertambah node: mod N vs ring, virtual node | bentuk **hash ring** |
 | [ ] Unique IDs at Scale | `unique-ids` | Auto-increment vs UUID vs Snowflake (timestamp + node + seq), pengurutan | — |
 | [ ] CAP & Consistency | `cap` | Partisi jaringan antar-region; CP vs AP; strong vs eventual; read-your-writes | link **terputus** (partition) |

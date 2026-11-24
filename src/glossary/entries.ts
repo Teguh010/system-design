@@ -420,6 +420,46 @@ export const glossaryEntries: GlossaryEntry[] = [
     step: 5,
   },
   {
+    id: 'sharding',
+    match: ['sharding', 'shard'],
+    definition: {
+      en: 'Splitting rows across many databases so writes and disk scale beyond one machine.',
+      id: 'Memecah baris ke banyak database agar tulis dan disk melampaui satu mesin.',
+    },
+    lessonId: 'sharding',
+    step: 2,
+  },
+  {
+    id: 'shard-key',
+    match: ['shard key'],
+    definition: {
+      en: 'The column used to pick exactly one shard — usually the one you query by most.',
+      id: 'Kolom untuk memilih tepat satu shard — biasanya yang paling sering dipakai query.',
+    },
+    lessonId: 'sharding',
+    step: 2,
+  },
+  {
+    id: 'hot-shard',
+    match: ['hot shard', 'hot key'],
+    definition: {
+      en: 'One shard that gets far more traffic than its neighbours — often a super-tenant or bad key choice.',
+      id: 'Satu shard dengan trafik jauh di atas tetangga — sering super-tenant atau pilihan key buruk.',
+    },
+    lessonId: 'sharding',
+    step: 4,
+  },
+  {
+    id: 'scatter-gather',
+    match: ['scatter-gather', 'scatter', 'cross-shard'],
+    definition: {
+      en: 'Query every shard in parallel, then merge results — correct but expensive.',
+      id: 'Query tiap shard paralel lalu gabung hasil — benar tapi mahal.',
+    },
+    lessonId: 'sharding',
+    step: 6,
+  },
+  {
     id: 'split-brain',
     match: ['split brain'],
     definition: {

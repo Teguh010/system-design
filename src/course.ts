@@ -5,6 +5,7 @@ import { latencyThroughput } from './lessons/latency-throughput.ts';
 import { loadBalancing } from './lessons/load-balancing.ts';
 import { napkinMath } from './lessons/napkin-math.ts';
 import { replication } from './lessons/replication.ts';
+import { sharding } from './lessons/sharding.ts';
 import { requestLifecycle } from './lessons/request-lifecycle.ts';
 import { indexes } from './lessons/indexes.ts';
 import { storageEngines } from './lessons/storage-engines.ts';
@@ -63,7 +64,7 @@ export const course: CourseModule[] = [
       ready(indexes, 'Indeks (Indexes)'),
       ready(storageEngines, 'Mesin Penyimpanan'),
       ready(replication, 'Replikasi'),
-      soon('sharding', 'Sharding'),
+      ready(sharding, 'Sharding'),
       soon('consistent-hashing', 'Consistent Hashing'),
       soon('unique-ids', 'Unique IDs at Scale', 'ID Unik dalam Skala Besar'),
       soon('cap', 'CAP & Consistency', 'CAP & Konsistensi'),
