@@ -1,9 +1,11 @@
+import { course } from '../course.ts';
 import { Stage } from '../engine/stage.ts';
+import { L, t } from '../i18n/index.ts';
 import { lb, link, server, spread, users } from '../lessons/helpers.ts';
-import { lessons } from '../lessons/index.ts';
 import type { Scene } from '../types.ts';
 import { esc, q } from './dom.ts';
-import { lastStep, visited } from './store.ts';
+import { isComplete, lessonHref, pad2 } from './sidebar.ts';
+import { visited } from './store.ts';
 
 const HERO: Scene = {
   entities: {
@@ -31,35 +33,35 @@ export class HomeView {
   private stage: Stage;
 
   constructor(host: HTMLElement) {
-    const modules = [...new Set(lessons.map((l) => l.module))];
     host.innerHTML = `
       <div class="home">
         <section class="hero">
           <div class="hero-text">
-            <p class="eyebrow">An interactive system design notebook</p>
-            <h1>System design you can <em>watch</em>.</h1>
-            <p class="lede">Every lesson is a diagram you step through. Requests flow, servers fall over, caches soak up the load — and each step explains why the next box exists.</p>
-            <p class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> pause · <kbd>R</kbd> replay · <kbd>F</kbd> fit · drag to pan</p>
+            <p class="eyebrow">${t('home.eyebrow')}</p>
+            <h1>${t('home.title')}</h1>
+            <p class="lede">${t('home.lede')}</p>
+            <p class="keys">${t('home.keys')}</p>
           </div>
           <div class="hero-art" aria-hidden="true"></div>
         </section>
-        ${modules
+        ${course
           .map(
-            (m) => `
+            (m, mi) => `
           <section class="module">
-            <h2>${esc(m)}</h2>
-            <div class="cards">${lessons
-              .filter((l) => l.module === m)
-              .map((l) => {
+            <h2><i class="folder" style="--m:${m.color}" aria-hidden="true"></i>${pad2(mi + 1)}. ${esc(L(m.title))}</h2>
+            <div class="cards">${m.lessons
+              .map((l, li) => {
+                const meta = `<div class="lc-meta"><span>${t('lesson.of', { i: li + 1, n: m.lessons.length })}</span>${
+                  l.lesson ? `<span>${t('lesson.min', { n: l.lesson.minutes })}</span><span>${t('lesson.steps', { n: l.lesson.steps.length })}</span>` : ''
+                }</div>`;
+                if (!l.lesson) return `<div class="lesson-card is-soon">${meta}<h3>${esc(L(l.title))}</h3><span class="cta">${t('home.soon')}</span></div>`;
                 const seen = visited(l.id).size;
-                const pct = Math.round((seen / l.steps.length) * 100);
-                const finished = seen >= l.steps.length;
-                const cta = seen === 0 ? 'Start' : finished ? 'Review' : 'Continue';
+                const pct = Math.round((Math.min(seen, l.lesson.steps.length) / l.lesson.steps.length) * 100);
+                const cta = seen === 0 ? t('home.start') : isComplete(l.id) ? t('home.review') : t('home.continue');
                 return `
-                <a class="lesson-card" href="#/${l.id}/${finished ? 1 : (lastStep(l.id) ?? 1)}">
-                  <div class="lc-meta"><span>${l.level}</span><span>${l.minutes} min</span><span>${l.steps.length} steps</span></div>
-                  <h3>${esc(l.title)}</h3>
-                  <p>${esc(l.summary)}</p>
+                <a class="lesson-card" href="${lessonHref(l.id)}">
+                  ${meta}
+                  <h3>${esc(L(l.title))}</h3>
                   <div class="lc-foot">
                     <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
                     <span class="cta">${cta} →</span>
@@ -74,7 +76,7 @@ export class HomeView {
       </div>`;
     this.stage = new Stage(q(host, '.hero-art'));
     this.stage.setScene(HERO, { jumpCamera: true });
-    document.title = 'Scale Lab — system design you can watch';
+    document.title = 'Scale Lab';
   }
 
   destroy() {

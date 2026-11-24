@@ -1,4 +1,4 @@
-export type EntityKind = 'user' | 'server' | 'db' | 'cache' | 'lb' | 'queue' | 'worker' | 'service' | 'card';
+export type EntityKind = 'user' | 'server' | 'db' | 'cache' | 'lb' | 'queue' | 'worker' | 'service' | 'cdn' | 'card';
 
 export type Tone = 'good' | 'bad' | 'warn' | 'info';
 
@@ -75,7 +75,6 @@ export interface Step {
 
 export interface Lesson {
   id: string;
-  module: string;
   title: string;
   summary: string;
   minutes: number;
@@ -84,4 +83,18 @@ export interface Lesson {
   legend: (PacketKind | [PacketKind, string])[];
   goals: { text: string; step: number }[];
   steps: Step[];
+}
+
+/**
+ * A translation of a lesson. Prose is matched by position (step i, paragraph j);
+ * short diagram strings (labels, card lines, metric values, legend) by their English text.
+ * Anything missing falls back to English.
+ */
+export interface LessonOverlay {
+  title?: string;
+  summary?: string;
+  metrics?: string[];
+  goals?: string[];
+  labels?: Record<string, string>;
+  steps?: ({ short?: string; title?: string; body?: string[]; callout?: string } | null)[];
 }

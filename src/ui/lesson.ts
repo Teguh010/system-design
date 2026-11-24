@@ -1,21 +1,19 @@
+import type { CourseModule } from '../course.ts';
 import { Stage } from '../engine/stage.ts';
-import type { Lesson, MetricValue, PacketKind } from '../types.ts';
+import { L, t } from '../i18n/index.ts';
+import type { Lesson, MetricValue } from '../types.ts';
 import { esc, q, replayClass } from './dom.ts';
+import { pad2 } from './sidebar.ts';
 import { markVisited, setLastStep, visited } from './store.ts';
 
-const PACKET_LABELS: Record<PacketKind, string> = {
-  req: 'request',
-  res: 'response',
-  slow: 'slow',
-  write: 'write',
-  fail: 'failure',
-  poison: 'bad traffic',
-  ping: 'control',
-};
+const isTyping = (target: EventTarget | null) =>
+  target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
-const CALLOUT_LABELS = { insight: 'Insight', tip: 'Tip', warning: 'Watch out' } as const;
-
-const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+export interface LessonPlace {
+  module: CourseModule;
+  moduleIndex: number;
+  lessonIndex: number;
+}
 
 export class LessonView {
   readonly lesson: Lesson;
@@ -23,47 +21,73 @@ export class LessonView {
   private stage: Stage;
   private i = -1;
   private shown = new Map<string, string>();
+  private onProgress: () => void;
 
-  constructor(host: HTMLElement, lesson: Lesson) {
+  constructor(host: HTMLElement, lesson: Lesson, place: LessonPlace, onProgress: () => void) {
     this.lesson = lesson;
+    this.onProgress = onProgress;
+    const { module, moduleIndex, lessonIndex } = place;
     host.innerHTML = `
       <div class="lesson">
-        <aside class="panel">
-          <div class="panel-head">
-            <a class="back" href="#/">← All lessons</a>
-            <div class="eyebrow">${esc(lesson.module)} · ${lesson.minutes} min · ${lesson.level}</div>
-            <h1 class="lesson-title">${esc(lesson.title)}</h1>
-            <ol class="dots" aria-label="Steps">${lesson.steps
-              .map((s, i) => `<li><a href="#/${lesson.id}/${i + 1}" data-i="${i}" title="${i + 1}. ${esc(s.short)}"><span>${i + 1}</span></a></li>`)
-              .join('')}</ol>
-          </div>
-          <article class="step" aria-live="polite"></article>
-          <nav class="step-nav">
-            <button class="btn prev" type="button">← Back</button>
-            <span class="counter"></span>
-            <button class="btn primary next" type="button">Next →</button>
-          </nav>
-        </aside>
-        <section class="stage-wrap">
-          <div class="metrics">${lesson.metrics
-            .map((m) => `<div class="metric" data-id="${m.id}"><span class="m-label">${esc(m.label)}</span><span class="m-val">—</span></div>`)
-            .join('')}</div>
-          <div class="stage"></div>
-          <div class="stage-foot">
-            <div class="legend">${lesson.legend
-              .map((l) => {
-                const [kind, label] = Array.isArray(l) ? l : [l, PACKET_LABELS[l]];
-                return `<span class="lg"><i class="sw sw-${kind}"></i>${esc(label)}</span>`;
-              })
-              .join('')}</div>
-            <div class="controls">
-              <button class="icon-btn pause" type="button" title="Pause traffic (Space)" aria-label="Pause">❚❚</button>
-              <button class="icon-btn replay" type="button" title="Replay step (R)" aria-label="Replay">↻</button>
-              <button class="icon-btn fit" type="button" title="Fit to view (F)">Fit</button>
+        <section class="center">
+          <header class="l-head">
+            <div class="crumbs"><a href="#/">${pad2(moduleIndex + 1)}. ${esc(L(module.title))}</a><span>/</span>${t('lesson.of', { i: lessonIndex + 1, n: module.lessons.length })}</div>
+            <div class="l-title-row">
+              <h1>${esc(lesson.title)}</h1>
+              <div class="pills">
+                <span class="pill-chip p-time">◷ ${t('lesson.min', { n: lesson.minutes })}</span>
+                <span class="pill-chip p-level">▮ ${t(`level.${lesson.level}`)}</span>
+                <span class="pill-chip p-steps">☰ ${t('lesson.steps', { n: lesson.steps.length })}</span>
+              </div>
+            </div>
+            <p class="l-summary">${esc(lesson.summary)}</p>
+          </header>
+          <div class="stage-card">
+            <div class="stage-top">
+              <div class="metrics">${lesson.metrics
+                .map((m) => `<div class="metric" data-id="${m.id}"><span class="m-label">${esc(m.label)}</span><span class="m-val">—</span></div>`)
+                .join('')}</div>
+              <div class="controls">
+                <button class="btn small replay" type="button" title="R">↻ ${t('stage.replay')}</button>
+                <button class="btn small pause" type="button" title="Space">❚❚ ${t('stage.pause')}</button>
+                <button class="btn small fit" type="button" title="F">⤢ ${t('stage.fit')}</button>
+              </div>
+            </div>
+            <div class="stage"></div>
+            <div class="stage-foot">
+              <div class="legend">${lesson.legend
+                .map((l) => {
+                  const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
+                  return `<span class="lg"><i class="sw sw-${kind}"></i>${esc(label)}</span>`;
+                })
+                .join('')}</div>
+              <span class="stage-hint">${t('stage.hint')}</span>
             </div>
           </div>
-          <p class="stage-hint">drag to pan · scroll or double-click to zoom</p>
+          <div class="timeline-card">
+            <div class="tl-head"><span>${t('lesson.timeline')}</span><span class="tl-count"></span></div>
+            <ol class="timeline">${lesson.steps
+              .map((s, i) => `<li><a href="#/${lesson.id}/${i + 1}" data-i="${i}"><span class="tl-dot">${i + 1}</span><span class="tl-label">${esc(s.short)}</span></a></li>`)
+              .join('')}</ol>
+          </div>
         </section>
+        <aside class="side">
+          <div class="step-card">
+            <div class="step-top"><span class="step-no"></span><span class="chip"></span></div>
+            <article class="step" aria-live="polite"></article>
+            <nav class="step-nav">
+              <button class="btn prev" type="button">← ${t('step.back')}</button>
+              <button class="btn primary next" type="button"></button>
+            </nav>
+            <p class="keys">${t('step.keys')}</p>
+          </div>
+          <div class="learn-card">
+            <h3>${t('lesson.learn')}</h3>
+            <ul class="learn">${lesson.goals
+              .map((g) => `<li><a href="#/${lesson.id}/${g.step}" data-step="${g.step}"><i class="check" aria-hidden="true"></i>${esc(g.text)}</a></li>`)
+              .join('')}</ul>
+          </div>
+        </aside>
       </div>`;
     this.root = q(host, '.lesson');
     this.stage = new Stage(q(this.root, '.stage'));
@@ -88,44 +112,53 @@ export class LessonView {
     const first = this.i === -1;
     this.i = i;
     const step = steps[i]!;
+    const n = steps.length;
+
+    q(this.root, '.step-no').textContent = t('step.label', { i: i + 1, n });
+    const chip = q(this.root, '.step-top .chip');
+    chip.className = `chip ch-${step.chapter}`;
+    chip.textContent = t(`chapter.${step.chapter}`);
 
     const article = q<HTMLElement>(this.root, '.step');
     const callout = step.callout
-      ? `<aside class="callout co-${step.callout.kind}"><b>${CALLOUT_LABELS[step.callout.kind]}</b> ${step.callout.text}</aside>`
+      ? `<aside class="callout co-${step.callout.kind}"><b>${t(`callout.${step.callout.kind}`)}</b><span>${step.callout.text}</span></aside>`
       : '';
-    const goals =
-      i === 0
-        ? `<div class="goals"><h3>In this lesson</h3><ol>${this.lesson.goals
-            .map((g) => `<li><a href="#/${this.lesson.id}/${g.step}">${esc(g.text)}</a></li>`)
-            .join('')}</ol></div>`
-        : '';
     article.innerHTML = `
-      <div class="step-meta"><span class="chip ch-${step.chapter}">${step.chapter}</span><span class="step-no">${esc(step.short)}</span></div>
       <h2>${esc(step.title)}</h2>
       ${step.body.map((p) => (p.trimStart().startsWith('<table') ? p : `<p>${p}</p>`)).join('')}
-      ${callout}
-      ${goals}`;
-    article.scrollTop = 0;
-    q<HTMLElement>(this.root, '.panel').scrollTop = 0;
+      ${callout}`;
+    q<HTMLElement>(this.root, '.step-card').scrollTop = 0;
     replayClass(article, 'enter');
 
     markVisited(this.lesson.id, i);
     setLastStep(this.lesson.id, i + 1);
     const seen = visited(this.lesson.id);
-    this.root.querySelectorAll<HTMLAnchorElement>('.dots a').forEach((a, j) => {
+
+    const timeline = q<HTMLElement>(this.root, '.timeline');
+    timeline.querySelectorAll<HTMLAnchorElement>('a').forEach((a, j) => {
       a.classList.toggle('is-current', j === i);
       a.classList.toggle('is-seen', seen.has(j));
-      if (j === i) a.setAttribute('aria-current', 'step');
-      else a.removeAttribute('aria-current');
+      if (j === i) {
+        a.setAttribute('aria-current', 'step');
+        // Keep the current step in view without scrolling the page itself.
+        const li = a.parentElement!;
+        timeline.scrollTo({ left: li.offsetLeft - timeline.clientWidth / 2 + li.offsetWidth / 2, behavior: first ? 'auto' : 'smooth' });
+      } else a.removeAttribute('aria-current');
+    });
+    q(this.root, '.tl-count').textContent = t('lesson.stepOf', { i: i + 1, n });
+
+    this.root.querySelectorAll<HTMLAnchorElement>('.learn a').forEach((a) => {
+      a.classList.toggle('is-done', seen.has(Number(a.dataset.step) - 1));
     });
 
-    q(this.root, '.counter').textContent = `${i + 1} / ${steps.length}`;
     q<HTMLButtonElement>(this.root, '.prev').disabled = i === 0;
-    q(this.root, '.next').textContent = i === steps.length - 1 ? 'Finish ✓' : 'Next →';
+    const next = steps[i + 1];
+    q(this.root, '.next').textContent = next ? `${t('step.nextTo', { short: next.short })} →` : `${t('step.finish')} ✓`;
 
     this.renderMetrics(i);
     this.stage.setScene(step.scene, { jumpCamera: first });
-    document.title = `${step.title} — ${this.lesson.title} · Scale Lab`;
+    document.title = `${step.title} · ${this.lesson.title} · Scale Lab`;
+    this.onProgress();
   }
 
   private renderMetrics(i: number) {
@@ -149,11 +182,11 @@ export class LessonView {
   }
 
   private togglePause() {
-    this.stage.setPaused(!this.stage.isPaused);
+    const paused = !this.stage.isPaused;
+    this.stage.setPaused(paused);
     const btn = q(this.root, '.pause');
-    btn.textContent = this.stage.isPaused ? '▶' : '❚❚';
-    btn.setAttribute('aria-label', this.stage.isPaused ? 'Play' : 'Pause');
-    btn.classList.toggle('is-on', this.stage.isPaused);
+    btn.textContent = paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`;
+    btn.classList.toggle('is-on', paused);
   }
 
   private onKey = (ev: KeyboardEvent) => {

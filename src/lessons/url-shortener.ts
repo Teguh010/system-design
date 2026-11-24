@@ -33,7 +33,6 @@ function scaled(opts: { analytics?: boolean; extra?: Record<string, Entity>; lin
     db0: db(42, -14, { label: 'shard 0' }),
     db: db(42, 0, { label: 'shard 1' }),
     db2: db(42, 14, { label: 'shard 2' }),
-    ...opts.extra,
   };
   const links: Record<string, Link> = {
     ul: link('users', 'lb'),
@@ -69,6 +68,7 @@ function scaled(opts: { analytics?: boolean; extra?: Record<string, Entity>; lin
     links.ws = link('worker', 'stats');
     flows.push(...spread(APPS.map((a) => [QUEUE_LINK[a], 'qw', 'ws']), 1.2, { kind: 'write' }));
   }
+  Object.assign(entities, opts.extra);
   flows.push(...(opts.flows ?? []));
   return { entities, links, flows };
 }
@@ -77,7 +77,6 @@ function scaled(opts: { analytics?: boolean; extra?: Record<string, Entity>; lin
 
 export const urlShortener: Lesson = {
   id: 'url-shortener',
-  module: 'Whole systems',
   title: 'Design a URL Shortener',
   summary: 'From a one-line brief to a service that turns billions of short codes into redirects in a couple of milliseconds.',
   minutes: 15,

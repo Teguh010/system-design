@@ -17,15 +17,19 @@ The engine is written once; lessons are plain data.
 
 ```
 src/
+  course.ts        9 modules / 40 lessons; unwritten lessons show as "coming soon"
   engine/
-    iso.ts       2:1 isometric projection, convex hull, ray/polygon clipping
-    shapes.ts    server, db, cache, lb, queue, worker, user, card → SVG + outline
-    stage.ts     scene diffing & tweening, depth sort, links, packets, camera, zoom/pan
-    svg.ts       element helper, canvas-based text measuring
+    iso.ts         2:1 isometric projection, convex hull, ray/polygon clipping
+    shapes.ts      server, db, cache, lb, queue, worker, cdn, user, card → SVG + outline
+    stage.ts       scene diffing & tweening, depth sort, links, packets, camera, zoom/pan
+    svg.ts         element helper, canvas-based text measuring
+  i18n/            UI strings (en.ts is the source, id.ts must match its keys) + locale detection
   lessons/
-    helpers.ts   authoring helpers: at(u, v), server(), db(), link(), spread()…
-    url-shortener.ts
-  ui/            router views (home, lesson player), localStorage progress
+    helpers.ts     authoring helpers: at(u, v), server(), db(), link(), spread()…
+    localize.ts    applies a lesson translation, loaded on demand
+    *.ts           one file per lesson (English source)
+    i18n/<locale>/<lesson-id>.ts   translations
+  ui/              shell views: sidebar, home, lesson player; localStorage progress
 ```
 
 Each step describes a **scene** — what exists, how it's connected and what traffic flows:
@@ -46,8 +50,23 @@ already fits). Metrics not set on a step carry over from earlier steps.
 - Flow routes are link ids in order; prefix with `~` to travel a link backwards. `bounce` sends a response back,
   `fail` is the chance a packet dies on arrival, `kind` picks the packet colour.
 
+## Languages
+
+English and Bahasa Indonesia. The language comes from `?lang=`, then the saved choice, then the browser, then English.
+
+- **UI strings** live in `src/i18n/en.ts`; `id.ts` is typed against it, so a missing key is a type error.
+- **Lessons** are written in English. A translation (`src/lessons/i18n/id/<lesson-id>.ts`, type `LessonOverlay`)
+  matches prose by position (step *i*, paragraph *j*) and short diagram strings — labels, card lines, metric values,
+  legend — by their exact English text. Anything missing falls back to English. Translations are split into
+  separate chunks and only downloaded when that language is chosen.
+- Module and lesson titles for the sidebar are in `src/course.ts` as `{ en, id }` pairs.
+
+To add a language: add it to `LOCALES` in `src/i18n/index.ts`, add a UI dictionary next to `id.ts`, and add
+titles in `course.ts`; lesson translations can follow one by one.
+
 ## Adding a lesson
 
 1. Create `src/lessons/<id>.ts` exporting a `Lesson` (see `src/types.ts`).
-2. Register it in `src/lessons/index.ts`.
-3. Open `#/<id>/1`.
+2. In `src/course.ts`, replace the matching `soon(...)` entry with `ready(lesson, '<Indonesian title>')`.
+3. Optionally add `src/lessons/i18n/id/<id>.ts`.
+4. Open `#/<id>/1`.

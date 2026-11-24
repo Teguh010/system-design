@@ -94,6 +94,19 @@ function drawShape(g: G, e: Entity): { points: Pt[]; h: number } {
       }
       return { points: p, h };
     }
+    case 'cdn': {
+      const h = 1.3;
+      const p = box(g, 2.2, 2.2, h);
+      const ring = [0, 1, 2, 3, 4, 5].map((i): Pt => {
+        const a = (i / 6) * Math.PI * 2;
+        return project(0.6 * Math.cos(a), 0.6 * Math.sin(a), h);
+      });
+      svg('polygon', { points: pts(ring), class: 'deco' }, g);
+      for (const r of ring) svg('circle', { cx: r[0], cy: r[1], r: 1.8, class: 'deco-fill' }, g);
+      const c = project(0, 0, h);
+      svg('circle', { cx: c[0], cy: c[1], r: 2.4, class: 'deco-fill' }, g);
+      return { points: p, h };
+    }
     case 'cache': {
       const h = 1.2;
       const p = box(g, 2, 2, h);
