@@ -13,6 +13,7 @@ const overlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
   'id/url-shortener': () => import('./i18n/id/url-shortener.ts'),
   'id/sql-nosql': () => import('./i18n/id/sql-nosql.ts'),
   'id/indexes': () => import('./i18n/id/indexes.ts'),
+  'id/storage-engines': () => import('./i18n/id/storage-engines.ts'),
 };
 
 const PREFIX = /^([!✓#] )/;

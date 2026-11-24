@@ -6,6 +6,7 @@ import { loadBalancing } from './lessons/load-balancing.ts';
 import { napkinMath } from './lessons/napkin-math.ts';
 import { requestLifecycle } from './lessons/request-lifecycle.ts';
 import { indexes } from './lessons/indexes.ts';
+import { storageEngines } from './lessons/storage-engines.ts';
 import { sqlNosql } from './lessons/sql-nosql.ts';
 import { stateless } from './lessons/stateless.ts';
 import { urlShortener } from './lessons/url-shortener.ts';
@@ -59,7 +60,7 @@ export const course: CourseModule[] = [
     lessons: [
       ready(sqlNosql, 'SQL vs NoSQL'),
       ready(indexes, 'Indeks (Indexes)'),
-      soon('storage-engines', 'Storage Engines'),
+      ready(storageEngines, 'Mesin Penyimpanan'),
       soon('replication', 'Replication', 'Replikasi'),
       soon('sharding', 'Sharding'),
       soon('consistent-hashing', 'Consistent Hashing'),

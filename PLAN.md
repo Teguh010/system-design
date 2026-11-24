@@ -77,8 +77,9 @@ npm run check:export # periksa HTML lesson setelah build
 | 09 | Whole Systems | Design a URL Shortener | `url-shortener` | [x] |
 | 03 | Data & Storage | SQL vs NoSQL | `sql-nosql` | [x] |
 | 03 | Data & Storage | Indexes | `indexes` | [x] |
+| 03 | Data & Storage | Storage Engines | `storage-engines` | [x] |
 
-**11 / 40 selesai.** Sisanya ada di bagian 6.
+**12 / 40 selesai.** Sisanya ada di bagian 6.
 
 ### Riwayat revisi penting
 - `request-lifecycle` jadi **lesson acuan visual**: konteks tetap tampil, label di garis, meter CPU,
@@ -421,12 +422,12 @@ Urutan pengerjaan yang disarankan: modul 03 → 04 → 05 → 06 → 07 → 08 �
 Skenario di bawah ini hanya usulan. Boleh diganti, asalkan tetap satu skenario konkret per lesson dan
 tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mungkin perlu ditambahkan.
 
-### 03 · Data & Storage (2/11)
+### 03 · Data & Storage (3/11)
 | Lesson | id | Usulan skenario / poin | Engine |
 |---|---|---|---|
 | [x] SQL vs NoSQL | `sql-nosql` | Aplikasi event/tiket: relasi & transaksi vs dokumen/key-value; pola akses menentukan pilihan | — |
 | [x] Indexes | `indexes` | Pencarian pesanan per email: full scan vs B-tree, index komposit, biaya tulis | bentuk **tree/B-tree** (node bertingkat) |
-| [ ] Storage Engines | `storage-engines` | B-tree vs LSM (memtable, SSTable, compaction), write vs read amplification | bentuk **tumpukan file/level** |
+| [x] Storage Engines | `storage-engines` | B-tree vs LSM (memtable, SSTable, compaction), write vs read amplification | bentuk **tumpukan file/level** (`stack`) |
 | [ ] Replication | `replication` | Leader + follower, read replica, replication lag, failover, sinkron vs asinkron | — |
 | [ ] Sharding | `sharding` | Data user melebihi satu DB: range vs hash, hot shard, resharding | — |
 | [ ] Consistent Hashing | `consistent-hashing` | Cache cluster bertambah node: mod N vs ring, virtual node | bentuk **hash ring** |

@@ -240,6 +240,66 @@ export const glossaryEntries: GlossaryEntry[] = [
     step: 6,
   },
   {
+    id: 'lsm',
+    match: ['LSM tree', 'LSM', 'log-structured merge tree'],
+    definition: {
+      en: 'Buffers sorted writes in memory, flushes immutable files, merges them in the background — built for append-heavy ingest.',
+      id: 'Buffer tulis terurut di memori, flush file immutable, merge di background — untuk ingest yang didominasi append.',
+    },
+    lessonId: 'storage-engines',
+    step: 4,
+  },
+  {
+    id: 'memtable',
+    match: ['memtable'],
+    definition: {
+      en: 'The in-memory sorted write buffer an LSM engine flushes to disk when full.',
+      id: 'Buffer tulis terurut di memori yang di-flush LSM ke disk saat penuh.',
+    },
+    lessonId: 'storage-engines',
+    step: 4,
+  },
+  {
+    id: 'sstable',
+    match: ['SSTable', 'SSTables'],
+    definition: {
+      en: 'An immutable on-disk file of sorted keys — LSM engines stack them in levels.',
+      id: 'File immutable berisi kunci terurut — engine LSM menumpuknya per level.',
+    },
+    lessonId: 'storage-engines',
+    step: 5,
+  },
+  {
+    id: 'compaction',
+    match: ['compaction'],
+    definition: {
+      en: 'Background merge of overlapping LSM files into fewer, larger sorted files.',
+      id: 'Merge di background file LSM yang overlap jadi lebih sedikit dan lebih besar.',
+    },
+    lessonId: 'storage-engines',
+    step: 7,
+  },
+  {
+    id: 'write-amplification',
+    match: ['write amplification'],
+    definition: {
+      en: 'Bytes actually written to disk per byte of new data — splits and compaction multiply it.',
+      id: 'Byte yang benar-benar ditulis ke disk per byte data baru — split dan compaction mengalikannya.',
+    },
+    lessonId: 'storage-engines',
+    step: 2,
+  },
+  {
+    id: 'read-amplification',
+    match: ['read amplification'],
+    definition: {
+      en: 'How many files or pages a logical read touches — LSM reads may check every active SSTable.',
+      id: 'Berapa file atau halaman yang disentuh satu baca logis — baca LSM bisa cek setiap SSTable aktif.',
+    },
+    lessonId: 'storage-engines',
+    step: 6,
+  },
+  {
     id: 'b-tree',
     match: ['B-tree', 'B-tree index'],
     definition: {

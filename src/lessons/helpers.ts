@@ -28,6 +28,9 @@ export const card = (u: number, v: number, title: string, lines: string[]): Enti
 /** Tiered nodes for B-tree / index illustrations. */
 export const tree = make('tree');
 
+/** Stacked levels for LSM / SSTable illustrations. */
+export const stack = make('stack');
+
 export const link = (from: string, to: string, extra: Partial<Link> = {}): Link => ({ from, to, ...extra });
 
 /** Split a total rate evenly across several alternative routes (e.g. one per server). */

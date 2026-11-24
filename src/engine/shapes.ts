@@ -222,6 +222,20 @@ function drawShape(g: G, e: Entity): { points: Pt[]; h: number } {
       }
       return { points: hull, h: 2.4 };
     }
+    case 'stack': {
+      const layers = Math.max(2, Math.min(6, e.count ?? 4));
+      const hull: Pt[] = [];
+      for (let i = 0; i < layers; i++) {
+        const z = i * 0.4;
+        const shrink = i * 0.06;
+        hull.push(...box(g, 2.6 - shrink, 1.9 - shrink * 0.4, 0.22, z));
+        if (i < layers - 1) {
+          const y = 0.85 - shrink * 0.2;
+          line(g, project(-1.05 + shrink, y, z + 0.22), project(1.05 - shrink, y, z + 0.22), 'deco');
+        }
+      }
+      return { points: hull, h: layers * 0.4 + 0.35 };
+    }
     case 'card':
       return { points: [], h: 0 };
   }
