@@ -126,7 +126,8 @@ export class LessonView {
     article.innerHTML = `
       <h2>${esc(step.title)}</h2>
       ${step.body.map((p) => (p.trimStart().startsWith('<table') ? p : `<p>${p}</p>`)).join('')}
-      ${callout}`;
+      ${callout}
+      ${this.changesHtml(i)}`;
     q<HTMLElement>(this.root, '.step-card').scrollTop = 0;
     replayClass(article, 'enter');
 
@@ -161,9 +162,38 @@ export class LessonView {
     this.onProgress();
   }
 
-  private renderMetrics(i: number) {
+  /** Author notes for this step plus every metric whose value differs from the previous step. */
+  private changesHtml(i: number): string {
+    if (i === 0) return '';
+    const text = (v: MetricValue | undefined) => (v === undefined ? undefined : typeof v === 'string' ? v : v.v);
+    const before = this.valuesAt(i - 1);
+    const after = this.valuesAt(i);
+    const rows: [string, string][] = (this.lesson.steps[i]!.changes ?? []).map((c) => {
+      const m = /^([+~-]) (.*)$/.exec(c);
+      return m ? [m[1]!, m[2]!] : ['~', c];
+    });
+    for (const m of this.lesson.metrics) {
+      const a = text(before[m.id]);
+      const b = text(after[m.id]);
+      if (b === undefined || a === b) continue;
+      const blank = a === undefined || a === '?' || a === '—';
+      rows.push(blank ? ['+', `${m.label}: ${b}`] : ['~', `${m.label}: ${a} → ${b}`]);
+    }
+    if (!rows.length) return '';
+    const sign = { '+': 'add', '~': 'change', '-': 'remove' } as Record<string, string>;
+    return `<div class="changes"><h3>${t('step.changed')}</h3><ul>${rows
+      .map(([k, v]) => `<li class="ch-${sign[k] ?? 'change'}"><i aria-hidden="true">${k === '-' ? '−' : k}</i><span>${esc(v)}</span></li>`)
+      .join('')}</ul></div>`;
+  }
+
+  private valuesAt(i: number): Record<string, MetricValue> {
     const values: Record<string, MetricValue> = {};
     for (const s of this.lesson.steps.slice(0, i + 1)) Object.assign(values, s.metrics);
+    return values;
+  }
+
+  private renderMetrics(i: number) {
+    const values = this.valuesAt(i);
     for (const m of this.lesson.metrics) {
       const el = q<HTMLElement>(this.root, `.metric[data-id="${m.id}"] .m-val`);
       const v = values[m.id] ?? '—';

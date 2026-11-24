@@ -34,6 +34,7 @@ const id: Record<UiKey, string> = {
   'step.next': 'Lanjut',
   'step.nextTo': 'Lanjut: {short}',
   'step.finish': 'Selesaikan pelajaran',
+  'step.changed': 'Yang berubah',
   'step.keys': '<kbd>←</kbd> <kbd>→</kbd> langkah · <kbd>R</kbd> ulang · <kbd>Space</kbd> jeda',
 
   'stage.replay': 'Ulang',

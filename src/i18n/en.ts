@@ -32,6 +32,7 @@ const en = {
   'step.next': 'Next',
   'step.nextTo': 'Next: {short}',
   'step.finish': 'Finish lesson',
+  'step.changed': 'What changed',
   'step.keys': '<kbd>←</kbd> <kbd>→</kbd> step · <kbd>R</kbd> replay · <kbd>Space</kbd> pause',
 
   'stage.replay': 'Replay',

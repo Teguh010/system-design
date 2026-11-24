@@ -1,7 +1,7 @@
 import type { Entity, Flow, Link, PacketKind, Scene } from '../types.ts';
 import { project, rayExit, type Pt } from './iso.ts';
 import { drawEntity, type Geo } from './shapes.ts';
-import { svg } from './svg.ts';
+import { svg, textWidth } from './svg.ts';
 
 interface Pose {
   x: number;
@@ -28,7 +28,8 @@ interface LiveLink {
   l: Link;
   g: SVGGElement;
   path: SVGPathElement;
-  label: SVGTextElement | null;
+  label: SVGGElement | null;
+  labelSize: [number, number];
   o: number;
   fromO: number;
   toO: number;
@@ -73,9 +74,11 @@ const contains = (outer: Box, inner: Box) =>
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+let stageCount = 0;
+
 export class Stage {
   readonly svg: SVGSVGElement;
-  private layers: { links: SVGGElement; packets: SVGGElement; ents: SVGGElement; fx: SVGGElement };
+  private layers: { links: SVGGElement; packets: SVGGElement; labels: SVGGElement; ents: SVGGElement; fx: SVGGElement };
   private ents = new Map<string, LiveEnt>();
   private links = new Map<string, LiveLink>();
   private packets: Packet[] = [];
@@ -94,10 +97,17 @@ export class Stage {
   private last = 0;
   private raf = 0;
   private cleanup: (() => void)[] = [];
+  private arrowId = `arrow-${++stageCount}`;
 
   constructor(host: HTMLElement) {
     this.svg = svg('svg', { class: 'stage-svg', role: 'img', 'aria-label': 'System diagram' }, host);
     const defs = svg('defs', {}, this.svg);
+    const marker = svg(
+      'marker',
+      { id: this.arrowId, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 10, markerHeight: 10, orient: 'auto-start-reverse', markerUnits: 'userSpaceOnUse' },
+      defs,
+    );
+    svg('path', { d: 'M 0 1 L 9 5 L 0 9 Z', class: 'arrow-head' }, marker);
     const pat = svg('pattern', { id: 'iso-dots', width: 28, height: 14, patternUnits: 'userSpaceOnUse' }, defs);
     for (const [cx, cy] of [
       [0, 0],
@@ -111,6 +121,8 @@ export class Stage {
     this.layers = {
       links: svg('g', { class: 'layer-links' }, this.svg),
       packets: svg('g', { class: 'layer-packets' }, this.svg),
+      // Link pills sit above the packets so moving traffic never hides their text.
+      labels: svg('g', { class: 'layer-labels' }, this.svg),
       ents: svg('g', { class: 'layer-ents' }, this.svg),
       fx: svg('g', { class: 'layer-fx' }, this.svg),
     };
@@ -182,12 +194,20 @@ export class Stage {
       let live = this.links.get(id);
       if (!live || JSON.stringify(live.l) !== JSON.stringify(l)) {
         live?.g.remove();
+        live?.label?.remove();
         const g = svg('g', { class: `link${l.dashed ? ' is-dashed' : ''}` }, this.layers.links);
         const path = svg('path', {}, g);
-        const label = l.label ? svg('text', { class: 'link-label', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g) : null;
-        if (label) label.textContent = l.label ?? '';
+        let label: SVGGElement | null = null;
+        let labelSize: [number, number] = [0, 0];
+        if (l.label) {
+          const w = textWidth(l.label, 10, 600) + 14;
+          labelSize = [w, 18];
+          label = svg('g', { class: `link-pill tone-${l.labelTone ?? 'none'}` }, this.layers.labels);
+          svg('rect', { x: -w / 2, y: -9, width: w, height: 18, rx: 9 }, label);
+          svg('text', { x: 0, y: 0, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, label).textContent = l.label;
+        }
         const o = live?.o ?? 0;
-        live = { id, l, g, path, label, o, fromO: o, toO: 1, removing: false, len: 0 };
+        live = { id, l, g, path, label, labelSize, o, fromO: o, toO: 1, removing: false, len: 0 };
         this.links.set(id, live);
       }
       live.removing = false;
@@ -195,6 +215,7 @@ export class Stage {
       live.toO = 1;
     }
 
+    this.applyArrows(scene);
     this.clearPackets();
     this.flows = (scene.flows ?? []).map((flow) => ({ flow, acc: Math.random() }));
 
@@ -214,11 +235,32 @@ export class Stage {
     }
   }
 
+  /** Arrowheads follow the traffic: a link used in both directions gets one at each end. */
+  private applyArrows(scene: Scene) {
+    const twoWay = new Set<string>();
+    for (const f of scene.flows ?? [])
+      for (const hop of f.route) {
+        if (f.bounce || hop.startsWith('~')) twoWay.add(hop.replace(/^~/, ''));
+      }
+    const url = `url(#${this.arrowId})`;
+    for (const link of this.links.values()) {
+      if (link.removing) continue;
+      const mode = link.l.arrow === true ? (twoWay.has(link.id) ? 'both' : 'end') : link.l.arrow;
+      if (mode) link.path.setAttribute('marker-end', url);
+      else link.path.removeAttribute('marker-end');
+      if (mode === 'both') link.path.setAttribute('marker-start', url);
+      else link.path.removeAttribute('marker-start');
+    }
+  }
+
   /** Re-enter the current scene from empty. */
   replay() {
     if (!this.scene) return;
     for (const e of this.ents.values()) e.g.remove();
-    for (const l of this.links.values()) l.g.remove();
+    for (const l of this.links.values()) {
+      l.g.remove();
+      l.label?.remove();
+    }
     this.ents.clear();
     this.links.clear();
     this.setScene(this.scene);
@@ -264,6 +306,7 @@ export class Stage {
       link.o = lerp(link.fromO, link.toO, ek);
       if (link.removing && k >= 1) {
         link.g.remove();
+        link.label?.remove();
         this.links.delete(link.id);
         continue;
       }
@@ -289,6 +332,7 @@ export class Stage {
     const b = this.ents.get(link.l.to);
     if (!a || !b) {
       link.g.style.opacity = '0';
+      if (link.label) link.label.style.opacity = '0';
       link.len = 0;
       return;
     }
@@ -314,11 +358,25 @@ export class Stage {
     const f = (p: Pt) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
     link.path.setAttribute('d', ctrl ? `M ${f(s)} Q ${f(ctrl)} ${f(t)}` : `M ${f(s)} L ${f(t)}`);
     link.len = link.path.getTotalLength();
-    link.g.style.opacity = (link.o * Math.min(a.pos.o, b.pos.o)).toFixed(3);
+    const opacity = (link.o * Math.min(a.pos.o, b.pos.o)).toFixed(3);
+    link.g.style.opacity = opacity;
+    if (link.label) link.label.style.opacity = opacity;
     if (link.label) {
+      // Sit the pill beside the line, never on it: push it along the normal (upper side) just far
+      // enough that the rectangle clears the line at any angle.
       const m = link.path.getPointAtLength(link.len / 2);
-      link.label.setAttribute('x', m.x.toFixed(1));
-      link.label.setAttribute('y', (m.y - 10).toFixed(1));
+      const p0 = link.path.getPointAtLength(Math.max(0, link.len / 2 - 2));
+      const p1 = link.path.getPointAtLength(Math.min(link.len, link.len / 2 + 2));
+      const tl = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
+      let nx = -(p1.y - p0.y) / tl;
+      let ny = (p1.x - p0.x) / tl;
+      if (ny > 0 || (Math.abs(ny) < 1e-6 && nx < 0)) {
+        nx = -nx;
+        ny = -ny;
+      }
+      const [w, h] = link.labelSize;
+      const off = Math.abs(nx) * (w / 2) + Math.abs(ny) * (h / 2) + 5;
+      link.label.setAttribute('transform', `translate(${(m.x + nx * off).toFixed(1)} ${(m.y + ny * off).toFixed(1)})`);
     }
   }
 

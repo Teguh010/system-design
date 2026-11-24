@@ -1,4 +1,4 @@
-import type { Entity } from '../types.ts';
+import type { Entity, IconName } from '../types.ts';
 import { convexHull, project, pts, type Pt } from './iso.ts';
 import { svg, textWidth } from './svg.ts';
 
@@ -14,17 +14,17 @@ function line(g: G, a: Pt, b: Pt, cls = 'deco') {
   svg('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: cls }, g);
 }
 
-/** A w × d × h box centred on the origin; returns its corner points. */
-function box(g: G, w: number, d: number, h: number): Pt[] {
+/** A w × d × h box centred on the origin, sitting at height z0; returns its corner points. */
+function box(g: G, w: number, d: number, h: number, z0 = 0): Pt[] {
   const hw = w / 2;
   const hd = d / 2;
-  const A0 = project(-hw, -hd, 0);
-  const B0 = project(hw, -hd, 0);
-  const C0 = project(hw, hd, 0);
-  const A1 = project(-hw, -hd, h);
-  const B1 = project(hw, -hd, h);
-  const C1 = project(hw, hd, h);
-  const D1 = project(-hw, hd, h);
+  const A0 = project(-hw, -hd, z0);
+  const B0 = project(hw, -hd, z0);
+  const C0 = project(hw, hd, z0);
+  const A1 = project(-hw, -hd, z0 + h);
+  const B1 = project(hw, -hd, z0 + h);
+  const C1 = project(hw, hd, z0 + h);
+  const D1 = project(-hw, hd, z0 + h);
   svg('polygon', { points: pts([A0, B0, B1, A1]), class: 'face f-l' }, g);
   svg('polygon', { points: pts([B0, C0, C1, B1]), class: 'face f-r' }, g);
   svg('polygon', { points: pts([A1, B1, C1, D1]), class: 'face f-top' }, g);
@@ -69,8 +69,52 @@ const CROWD: [number, number][] = [
   [0.45, -0.45],
 ];
 
+/** A laptop on a small platform: the browser / end user. */
+function laptop(g: G): Pt[] {
+  const platform = box(g, 3, 2.4, 0.3);
+  const z0 = 0.3;
+  const keys = box(g, 1.7, 1.2, 0.12, z0);
+  const zt = z0 + 0.12;
+  for (const t of [-0.25, 0.1]) line(g, project(-0.6, t, zt), project(0.6, t, zt));
+  // Screen hinged on the back edge of the keyboard, leaning back slightly.
+  const screen: Pt[] = [project(-0.85, 0.6, zt), project(0.85, 0.6, zt), project(0.85, 0.85, zt + 1.05), project(-0.85, 0.85, zt + 1.05)];
+  svg('polygon', { points: pts(screen), class: 'face f-l' }, g);
+  const c: Pt = [(screen[0]![0] + screen[2]![0]) / 2, (screen[0]![1] + screen[2]![1]) / 2];
+  const inset = screen.map(([x, y]): Pt => [c[0] + (x - c[0]) * 0.8, c[1] + (y - c[1]) * 0.78]);
+  svg('polygon', { points: pts(inset), class: 'screen' }, g);
+  return [...platform, ...keys, ...screen];
+}
+
+const ICONS: Record<IconName, (g: G) => void> = {
+  globe: (g) => {
+    svg('circle', { cx: 0, cy: 0, r: 9 }, g);
+    svg('ellipse', { cx: 0, cy: 0, rx: 4, ry: 9 }, g);
+    svg('path', { d: 'M -9 0 H 9 M -7.5 -4.5 H 7.5 M -7.5 4.5 H 7.5' }, g);
+  },
+  server: (g) => {
+    svg('rect', { x: -8, y: -8, width: 16, height: 6.5, rx: 2 }, g);
+    svg('rect', { x: -8, y: 1.5, width: 16, height: 6.5, rx: 2 }, g);
+    svg('path', { d: 'M -4.5 -4.75 h 0.1 M -4.5 4.75 h 0.1' }, g);
+  },
+  database: (g) => {
+    svg('ellipse', { cx: 0, cy: -6, rx: 8, ry: 3 }, g);
+    svg('path', { d: 'M -8 -6 V 6 A 8 3 0 0 0 8 6 V -6 M -8 0 A 8 3 0 0 0 8 0' }, g);
+  },
+  bolt: (g) => {
+    svg('path', { d: 'M 2 -9 L -5 1 H 0 L -2 9 L 5 -1 H 0 Z' }, g);
+  },
+};
+
+/** Draws an icon lying flat on the top face centred at (cx, cy). */
+function icon(g: G, name: IconName, cx: number, cy: number, s: number) {
+  const grp = svg('g', { class: 'icon', transform: `matrix(${s} ${s / 2} ${-s} ${s / 2} ${cx} ${cy})` }, g);
+  ICONS[name](grp);
+}
+
 function drawShape(g: G, e: Entity): { points: Pt[]; h: number } {
   switch (e.kind) {
+    case 'client':
+      return { points: laptop(g), h: 1.2 };
     case 'server': {
       const h = 2.4;
       const p = box(g, 2, 2, h);
@@ -164,6 +208,23 @@ function pill(g: G, text: string, cy: number, cls: string, size = 11): number {
   return w;
 }
 
+function meter(g: G, m: NonNullable<Entity['meter']>, cy: number): number {
+  const pct = `${Math.round(Math.max(0, Math.min(1, m.value)) * 100)}%`;
+  const lw = textWidth(m.label, 10, 600);
+  const pw = textWidth(pct, 10, 700);
+  const bar = 30;
+  const w = 10 + lw + 7 + bar + 7 + pw + 10;
+  const x = -w / 2;
+  const grp = svg('g', { class: `meter tone-${m.tone ?? 'info'}` }, g);
+  svg('rect', { x, y: cy - 9, width: w, height: 18, rx: 9, class: 'meter-bg' }, grp);
+  svg('text', { x: x + 10, y: cy, 'dominant-baseline': 'central', class: 'meter-label' }, grp).textContent = m.label;
+  const bx = x + 10 + lw + 7;
+  svg('rect', { x: bx, y: cy - 2.5, width: bar, height: 5, rx: 2.5, class: 'meter-track' }, grp);
+  svg('rect', { x: bx, y: cy - 2.5, width: Math.max(2, bar * Math.min(1, m.value)), height: 5, rx: 2.5, class: 'meter-fill' }, grp);
+  svg('text', { x: bx + bar + 7, y: cy, 'dominant-baseline': 'central', class: 'meter-pct' }, grp).textContent = pct;
+  return w;
+}
+
 function drawCard(g: G, e: Entity): Geo {
   const lines = e.lines ?? [];
   const title = e.title ?? '';
@@ -197,7 +258,12 @@ function drawCard(g: G, e: Entity): Geo {
 export function drawEntity(g: G, e: Entity): Geo {
   if (e.kind === 'card') return drawCard(g, e);
   const k = e.size ?? 1;
-  const { points: raw, h } = drawShape(k === 1 ? g : svg('g', { transform: `scale(${k})` }, g), e);
+  const sg = k === 1 ? g : svg('g', { transform: `scale(${k})` }, g);
+  const { points: raw, h } = drawShape(sg, e);
+  if (e.icon) {
+    const [cx, cy] = project(0, 0, h);
+    icon(sg, e.icon, cx, cy, e.kind === 'db' ? 0.62 : 0.8);
+  }
   const points = raw.map(([x, y]): Pt => [x * k, y * k]);
   const shape = convexHull(points);
   const ys = shape.map((p) => p[1]);
@@ -211,7 +277,12 @@ export function drawEntity(g: G, e: Entity): Geo {
     svg('text', { x: 0, y: bottom + 36, 'text-anchor': 'middle', class: 'sub' }, g).textContent = e.sub;
     box(textWidth(e.sub, 10) + 4, bottom + 27, bottom + 40);
   }
+  let above = top - 14;
+  if (e.meter) {
+    box(meter(g, e.meter, above), above - 9, above + 9);
+    above -= 22;
+  }
   const badge = e.badge ?? (e.down ? { text: 'DOWN', tone: 'bad' as const } : undefined);
-  if (badge) box(pill(g, badge.text, top - 14, `badge tone-${badge.tone ?? 'info'}`, 10), top - 23, top - 5);
+  if (badge) box(pill(g, badge.text, above, `badge tone-${badge.tone ?? 'info'}`, 10), above - 9, above + 9);
   return { hull: convexHull([...points, ...extra]), center: project(0, 0, (h * k) / 2) };
 }

@@ -1,4 +1,7 @@
-export type EntityKind = 'user' | 'server' | 'db' | 'cache' | 'lb' | 'queue' | 'worker' | 'service' | 'cdn' | 'card';
+export type EntityKind = 'user' | 'client' | 'server' | 'db' | 'cache' | 'lb' | 'queue' | 'worker' | 'service' | 'cdn' | 'card';
+
+/** Small line icons drawn flat on an entity's top face. */
+export type IconName = 'globe' | 'server' | 'database' | 'bolt';
 
 export type Tone = 'good' | 'bad' | 'warn' | 'info';
 
@@ -18,6 +21,9 @@ export interface Entity {
   badge?: Badge;
   down?: boolean;
   ghost?: boolean;
+  /** A small gauge above the shape, e.g. `{ label: 'CPU', value: 0.3 }`. */
+  meter?: { label: string; value: number; tone?: Tone };
+  icon?: IconName;
   /** Scale of the shape (not its labels), e.g. 1.6 for a bigger machine. */
   size?: number;
   /** Number of figures drawn for `user` entities (1–3). */
@@ -33,7 +39,14 @@ export interface Link {
   dashed?: boolean;
   /** Bend as a fraction of the link length; sign picks the side. */
   curve?: number;
+  /** Pill drawn on the middle of the link. */
   label?: string;
+  labelTone?: Tone;
+  /**
+   * Arrowheads. `true` picks automatically: both ends when any flow travels the link in both
+   * directions (a `bounce`, or a `~` reversed hop), otherwise only the `to` end.
+   */
+  arrow?: boolean | 'end' | 'both';
 }
 
 export type PacketKind = 'req' | 'res' | 'slow' | 'write' | 'fail' | 'poison' | 'ping';
@@ -72,6 +85,11 @@ export interface Step {
   callout?: { kind: 'insight' | 'tip' | 'warning'; text: string };
   /** Values not given here carry over from earlier steps. */
   metrics?: Record<string, MetricValue>;
+  /**
+   * Extra lines for the "What changed" list, each starting with `+ `, `~ ` or `- `.
+   * Metric changes are listed automatically.
+   */
+  changes?: string[];
   scene: Scene;
 }
 
@@ -98,5 +116,5 @@ export interface LessonOverlay {
   metrics?: string[];
   goals?: string[];
   labels?: Record<string, string>;
-  steps?: ({ short?: string; title?: string; body?: string[]; callout?: string } | null)[];
+  steps?: ({ short?: string; title?: string; body?: string[]; callout?: string; changes?: string[] } | null)[];
 }

@@ -25,8 +25,14 @@
         .filter((g) => g.style.opacity === '1')
         .map((g) => ({
           name: g.querySelector('.pill text, .card-title')?.textContent ?? g.getAttribute('class'),
-          boxes: [...g.querySelectorAll('.pill, .badge, .card-bg, .face, .sub')].map((e) => e.getBoundingClientRect()),
-        }));
+          boxes: [...g.querySelectorAll('.pill, .badge, .meter, .card-bg, .face, .sub')].map((e) => e.getBoundingClientRect()),
+        }))
+        .concat(
+          [...document.querySelectorAll('.layer-links > g')]
+            .filter((g) => Number(g.style.opacity) > 0.9)
+            .flatMap((g) => [...g.querySelectorAll('.link-pill')])
+            .map((p) => ({ name: `“${p.textContent}”`, boxes: [p.getBoundingClientRect()] })),
+        );
       for (let a = 0; a < parts.length; a++)
         for (let b = a + 1; b < parts.length; b++) {
           let worst = 0;

@@ -21,6 +21,7 @@ export const lb = make('lb');
 export const queue = make('queue');
 export const worker = make('worker');
 export const cdn = make('cdn');
+export const client = make('client');
 
 export const card = (u: number, v: number, title: string, lines: string[]): Entity => ({ kind: 'card', ...at(u, v), title, lines });
 

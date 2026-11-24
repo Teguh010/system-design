@@ -18,6 +18,8 @@
   --k-worker: #d8efec;
   --k-user: #f3e2cc;
   --k-cdn: #d3ecf5;
+  --k-client: #efe6da;
+  --screen: #cfd9f7;
 
   --p-req: #2f5fd0;
   --p-res: #2e8b57;
@@ -59,6 +61,8 @@
   --k-worker: #82b3ad;
   --k-user: #c7ad8c;
   --k-cdn: #7fb3c7;
+  --k-client: #b9ab98;
+  --screen: #6f86c9;
 
   --p-req: #7aa2ff;
   --p-res: #5fd39a;
@@ -738,8 +742,8 @@ a.lesson-card:hover {
 }
 
 .metric {
-  min-width: 118px;
-  padding: 7px 11px;
+  min-width: 96px;
+  padding: 7px 10px;
   background: var(--card);
   border: 1.5px solid var(--line);
   border-radius: 9px;
@@ -1101,6 +1105,63 @@ a.lesson-card:hover {
   font-size: 10px;
 }
 
+/* what changed */
+
+.changes {
+  margin: 16px 0 4px;
+}
+
+.changes h3 {
+  margin: 0 0 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.changes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.changes li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.changes i {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 4px;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.ch-add i {
+  background: color-mix(in oklab, var(--good) 22%, transparent);
+  color: var(--good);
+}
+
+.ch-change i {
+  background: color-mix(in oklab, var(--warn) 22%, transparent);
+  color: var(--warn);
+}
+
+.ch-remove i {
+  background: color-mix(in oklab, var(--bad) 22%, transparent);
+  color: var(--bad);
+}
+
 /* goals checklist */
 
 .learn-card {
@@ -1183,6 +1244,7 @@ a.lesson-card:hover {
 .k-worker { --c: var(--k-worker); }
 .k-user { --c: var(--k-user); }
 .k-cdn { --c: var(--k-cdn); }
+.k-client { --c: var(--k-client); }
 
 .face,
 .deco,
@@ -1243,6 +1305,56 @@ a.lesson-card:hover {
 .is-down .led {
   fill: var(--p-fail);
 }
+
+.screen {
+  fill: var(--screen);
+  stroke: var(--edge);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.icon * {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.75;
+}
+
+.meter-bg {
+  fill: var(--card);
+  stroke: var(--edge);
+  stroke-width: 1.2;
+}
+
+[data-theme='dark'] .meter-bg {
+  stroke: var(--line);
+}
+
+.meter-label,
+.meter-pct {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.meter-pct {
+  font-weight: 700;
+}
+
+.meter-track {
+  fill: var(--paper-2);
+  stroke: var(--line);
+  stroke-width: 0.8;
+}
+
+.meter-fill { fill: var(--info); }
+.meter.tone-good .meter-fill { fill: var(--good); }
+.meter.tone-warn .meter-fill { fill: var(--warn); }
+.meter.tone-bad .meter-fill { fill: var(--bad); }
 
 .pill rect {
   fill: var(--card);
@@ -1349,14 +1461,49 @@ a.lesson-card:hover {
   stroke-dasharray: 5 5;
 }
 
-.link-label {
+.arrow-head {
+  fill: var(--edge);
+  opacity: 0.7;
+}
+
+[data-theme='dark'] .arrow-head {
+  fill: var(--muted);
+}
+
+.link-pill rect {
+  fill: var(--card);
+  stroke: var(--edge);
+  stroke-width: 1.1;
+}
+
+[data-theme='dark'] .link-pill rect {
+  stroke: var(--line);
+}
+
+.link-pill text {
   font-family: var(--mono);
   font-size: 10px;
-  fill: var(--muted);
-  paint-order: stroke;
-  stroke: var(--paper);
-  stroke-width: 4px;
+  font-weight: 600;
+  fill: var(--ink);
 }
+
+.link-pill.tone-bad rect {
+  fill: color-mix(in oklab, var(--bad) 16%, var(--card));
+  stroke: var(--bad);
+}
+.link-pill.tone-bad text { fill: var(--bad); }
+
+.link-pill.tone-good rect {
+  fill: color-mix(in oklab, var(--good) 16%, var(--card));
+  stroke: var(--good);
+}
+.link-pill.tone-good text { fill: var(--good); }
+
+.link-pill.tone-warn rect {
+  fill: color-mix(in oklab, var(--warn) 16%, var(--card));
+  stroke: var(--warn);
+}
+.link-pill.tone-warn text { fill: var(--warn); }
 
 .pkt {
   stroke: var(--paper);

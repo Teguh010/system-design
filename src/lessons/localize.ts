@@ -20,6 +20,7 @@ function apply(lesson: Lesson, o: LessonOverlay): Lesson {
     if (e.title !== undefined) out.title = tr(e.title)!;
     if (e.lines) out.lines = e.lines.map(line);
     if (e.badge) out.badge = { ...e.badge, text: tr(e.badge.text)! };
+    if (e.meter) out.meter = { ...e.meter, label: tr(e.meter.label)! };
     return out;
   };
   const scene = (s: Scene): Scene => ({
@@ -43,6 +44,7 @@ function apply(lesson: Lesson, o: LessonOverlay): Lesson {
         title: so?.title ?? step.title,
         body: step.body.map((p, j) => so?.body?.[j] ?? p),
         ...(step.callout && { callout: { ...step.callout, text: so?.callout ?? step.callout.text } }),
+        ...(step.changes && { changes: step.changes.map((c, j) => so?.changes?.[j] ?? c) }),
         ...(step.metrics && { metrics: Object.fromEntries(Object.entries(step.metrics).map(([k, v]) => [k, metric(v)])) }),
         scene: scene(step.scene),
       };

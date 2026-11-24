@@ -39,7 +39,10 @@ npm run check:i18n   # validasi terjemahan
 - [x] Kontrol: ← → step, Space pause, R replay, F fit
 - [x] Dark mode (semua warna lewat CSS variable)
 - [x] Opsi `size` untuk membesarkan bentuk (misalnya server yang di-scale up)
-- [x] Bentuk: `user`, `server`, `service`, `db`, `cache`, `lb`, `queue`, `worker`, `cdn`, `card`
+- [x] Bentuk: `user`, `client` (laptop), `server`, `service`, `db`, `cache`, `lb`, `queue`, `worker`, `cdn`, `card`
+- [x] Label pil di garis (`label`, `labelTone`) + panah (`arrow`); pil digambar di atas paket
+- [x] Meter di entitas (`meter: { label, value, tone }`), ikon di permukaan atas (`icon`)
+- [x] Panel "What changed" (catatan `changes` + selisih metrik otomatis)
 
 ### Struktur kursus dan UI
 - [x] 9 modul / 40 lesson di `src/course.ts`; lesson yang belum ditulis tampil "soon"
@@ -68,6 +71,8 @@ npm run check:i18n   # validasi terjemahan
 **9 / 40 selesai.** Sisanya ada di bagian 6.
 
 ### Riwayat revisi penting
+- `request-lifecycle` jadi **lesson acuan visual**: konteks tetap tampil, label di garis, meter CPU,
+  metrik yang menjumlah ke total, dan catatan `changes`. Lesson lain belum memakai fitur ini (lihat 6).
 - `request-lifecycle` ditulis ulang (EN + ID). Sekarang dibuka dengan masalah, tanpa load balancer/CDN,
   dengan case N+1 query dan pembaca jauh, dan recap yang merujuk ke lesson lain.
 - `latency-throughput`: load balancer di step 6–10 diganti satu antrean bersama + 4 worker.
@@ -155,6 +160,37 @@ Periksa setiap lesson baru terhadap daftar berikut:
    (misalnya DNS → connect → request → server → response) memang sama di mana-mana dan boleh dipakai.
    Keaslian ada di teks, skenario, nama, angka, dan detail case. Semua itu wajib ditulis sendiri.
 
+### 4.1b Diagram harus bercerita (wajib untuk lesson baru)
+
+Acuannya [request-lifecycle.ts](src/lessons/request-lifecycle.ts). Pesan sebuah step harus bisa
+ditangkap **dari diagramnya saja**, tanpa membaca teks:
+
+1. **Konteks tetap tampil.** Komponen yang sudah diperkenalkan tetap di stage pada step-step berikutnya,
+   dengan status terbarunya (misalnya resolver dengan label `cached · 5 min`). Buang hanya kalau memang
+   tidak relevan lagi dengan cerita.
+2. **Anotasi di tempat kejadian.** Gunakan label di garis untuk apa yang lewat (`GET /storm-warning`,
+   `SELECT author × 40` dengan `labelTone: 'bad'`), badge untuk status entitas (`41 queries · 410 ms`),
+   dan `meter` untuk utilisasi (CPU, antrean, memori). Satu step maksimal sekitar 3–4 anotasi.
+3. **Tunjukkan kontras penyebab.** Kalau case-nya "yang lambat bukan X", buat X terlihat sehat
+   (misalnya meter CPU rendah dan hijau) sementara Y merah.
+4. **`arrow: true`** pada garis yang membawa trafik. Engine memilih sendiri: **⟷ dua arah** kalau ada flow
+   yang bolak-balik di garis itu (`bounce`, atau hop `~` terbalik), **→ satu arah** kalau tidak.
+   Bisa dipaksa dengan `arrow: 'end'` atau `arrow: 'both'`. Jangan pasang panah satu arah pada alur
+   request/response.
+   Label garis otomatis diletakkan **di samping garis** (digeser tegak lurus ke sisi atas), tidak pernah
+   menimpa garis atau paket. Jadi jangan mengakali posisi label dengan spasi atau karakter tambahan.
+5. **Metrik yang menjumlah.** Kalau topiknya biaya atau waktu, susun metrik sebagai komponen + total
+   (contoh: DNS + connect + request/server + download = page ready), dan pastikan angkanya benar-benar
+   menjumlah.
+6. **`changes`** di setiap step (kecuali step 1): 1–3 catatan kualitatif berawalan `+ ` / `~ ` / `- `.
+   Perubahan metrik sudah otomatis ditampilkan, jadi jangan ditulis ulang di sini.
+7. **Trafik tenang.** Sekitar 1–3 paket/detik per flow. Di step case, kurangi trafik normal supaya trafik
+   bermasalah (`slow`, `fail`) yang menonjol.
+8. Pakai `client` (laptop) untuk browser atau user tunggal, dan `users` untuk kerumunan.
+   Pakai `icon` (`globe`, `server`, `database`, `bolt`) untuk membantu mengenali bentuk.
+9. Label di garis sebaiknya pendek (≤ 22 karakter) dan jarak antar-entitas cukup lebar (`u` ≥ 18–20)
+   supaya pilnya tidak menutupi seluruh garis.
+
 ### 4.2 Scene dan layout
 
 - Tulis posisi dengan `at(u, v)` lewat helper: `u` = kanan, `v` = bawah. Jangan pakai `x/y` isometrik mentah.
@@ -186,7 +222,8 @@ Periksa setiap lesson baru terhadap daftar berikut:
 - **Prosa** dicocokkan **berdasarkan posisi**: `steps[i].body[j]`, `callout`, `goals[i]`, `metrics[i]`
   (label metrik). Jumlah paragraf **harus sama** dengan versi EN.
 - **String diagram** dicocokkan **berdasarkan teks Inggris persis** lewat `labels`. Ini mencakup label,
-  sub, judul kartu, baris kartu, badge, nilai metrik, dan label legend.
+  sub, judul kartu, baris kartu, badge, label garis, label meter, nilai metrik, dan label legend.
+- **`changes`** diterjemahkan berdasarkan posisi (`steps[i].changes[j]`); jumlahnya harus sama.
   - Untuk baris kartu yang berawalan `! ` / `✓ ` / `# `, kuncinya adalah teks **tanpa** prefiks.
   - Jaga perataan kolom di baris kartu (font monospace).
 - Istilah teknis yang lazim tetap dalam bahasa Inggris: cache, load balancer, request, response,
@@ -212,7 +249,7 @@ Periksa setiap lesson baru terhadap daftar berikut:
 
 ## 5. Alur kerja menambah satu lesson (Definition of Done)
 
-1. Tulis `src/lessons/<id>.ts` (EN) mengikuti 4.1, **4.1a**, dan 4.2.
+1. Tulis `src/lessons/<id>.ts` (EN) mengikuti 4.1, **4.1a**, **4.1b**, dan 4.2.
 2. Di `src/course.ts`: import lesson-nya, lalu ganti `soon('<id>', …)` dengan `ready(<lesson>, '<Judul ID>')`.
 3. `npm run typecheck` harus bersih.
 4. Buka `npm run dev` → `#/<id>/1`, jalankan semua step, dan pastikan tidak ada error di console.
@@ -292,6 +329,17 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 | [ ] Design a News Feed | `news-feed` | Fan-out on write vs read, akun selebriti, ranking, cache timeline | — |
 | [ ] Design a Chat System | `chat` | WebSocket gateway, presence, urutan pesan, offline delivery, reconnect storm | — |
 
+### Upgrade visual lesson lama (ke standar 4.1b)
+- [x] `request-lifecycle`
+- [ ] `latency-throughput` (meter utilisasi di worker, label antrean)
+- [ ] `napkin-math`
+- [ ] `vertical-horizontal` (meter CPU di server)
+- [ ] `load-balancing` (meter per server, label algoritme)
+- [ ] `stateless`
+- [ ] `caching` (label hit/miss di garis, meter hit rate)
+- [ ] `cdn` (label RTT di garis)
+- [ ] `url-shortener`
+
 ### Ide fitur (opsional, setelah lesson)
 - [ ] Search ⌘K (judul lesson, step, istilah)
 - [ ] Deploy ke Vercel / GitHub Pages
@@ -311,3 +359,5 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 - `exactOptionalPropertyTypes` aktif. Untuk properti opsional kondisional, pakai
   `...(cond && { prop })`, jangan `prop: cond ? x : undefined`.
 - Port 5173 mungkin sudah dipakai `npm run dev` milik user. Jangan menjalankan server kedua di port yang sama.
+- Pil label garis ada di layer tersendiri (`layer-labels`), di atas paket dan di bawah entitas. Kalau
+  menambah elemen per-link lain, ingat untuk ikut menghapusnya saat link dibuang.
