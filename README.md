@@ -20,6 +20,10 @@ npm run check:i18n # every lesson translation matches its English source
 The export can be hosted on a static web server; no backend is required. Future server-side features
 will require a suitable deployment and a change to the export configuration.
 
+Progress and preferences use the same localStorage keys as before, but browser storage is scoped to the
+origin, including the port. To reuse data from `http://localhost:5173`, stop the old Vite server and run
+`npm run dev -- --port 5173`; `http://localhost:3000` has separate storage. Use the same hostname too.
+
 **Keys:** `←` `→` step · `Space` pause traffic · `R` replay step · `F` fit view · drag to pan · scroll / double-click to zoom.
 
 ## How it works

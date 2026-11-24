@@ -386,6 +386,8 @@ search, dan OG image khusus masih pekerjaan mendatang.
   terjemahan, daftarkan loader di sana dan jalankan `npm run check:i18n`.
 - Kunci progres dan preferensi tetap `stl:visited`, `stl:last`, `stl:theme`, dan `stl:lang`.
   Progres berasal dari `localStorage` setelah hydration; angka awal dapat sebentar terlihat kosong.
+  Storage terikat origin termasuk port: untuk memakai progres dari `localhost:5173`, hentikan Vite
+  dan jalankan `npm run dev -- --port 5173`; `localhost:3000` memiliki storage terpisah.
 - Static export tidak menyediakan route handler, server action, atau redirect server dinamis.
   Backend nanti memerlukan pilihan deployment dan perubahan konfigurasi serta implementasi,
   bukan sekadar menghapus `output: 'export'`. Deployment di subpath memerlukan konfigurasi tambahan.
