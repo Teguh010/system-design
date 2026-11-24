@@ -1,4 +1,5 @@
-export type EntityKind = 'user' | 'client' | 'server' | 'db' | 'cache' | 'lb' | 'queue' | 'worker' | 'service' | 'cdn' | 'card';
+export type EntityKind =
+  | 'user' | 'client' | 'server' | 'db' | 'cache' | 'lb' | 'queue' | 'worker' | 'service' | 'cdn' | 'card' | 'tree';
 
 /** Small line icons drawn flat on an entity's top face. */
 export type IconName = 'globe' | 'server' | 'database' | 'bolt';

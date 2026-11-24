@@ -195,6 +195,33 @@ function drawShape(g: G, e: Entity): { points: Pt[]; h: number } {
       const spots = n === 1 ? [[0, 0] as [number, number]] : CROWD.slice(0, n);
       return { points: spots.flatMap(([dx, dy]) => person(g, dx, dy)), h: 1.4 };
     }
+    case 'tree': {
+      const leaves = Math.max(3, Math.min(5, e.count ?? 3));
+      const nodes: [number, number, number][] = [[0, 0, 1.85]];
+      const spread = 0.9;
+      nodes.push([-spread, 0, 1.02], [spread, 0, 1.02]);
+      for (let i = 0; i < leaves; i++) {
+        const t = leaves === 1 ? 0 : (i - (leaves - 1) / 2) * spread;
+        nodes.push([t, 0, 0.12]);
+      }
+      const hull: Pt[] = [];
+      const centers: Pt[] = [];
+      for (const [dx, dy, z] of nodes) {
+        const [ox, oy] = project(dx, dy, 0);
+        const sub = svg('g', { transform: `translate(${ox} ${oy})` }, g);
+        hull.push(...box(sub, 0.78, 0.58, 0.3, z));
+        centers.push(project(dx, dy, z + 0.3));
+      }
+      const root = centers[0]!;
+      for (let i = 1; i <= 2 && i < centers.length; i++) line(g, root, centers[i]!);
+      for (let i = 1; i <= 2 && i < centers.length; i++) {
+        const mid = centers[i]!;
+        for (let j = 3; j < centers.length; j++) {
+          if (Math.abs((nodes[j]?.[0] ?? 0) - (nodes[i]?.[0] ?? 0)) < spread * 0.75) line(g, mid, centers[j]!);
+        }
+      }
+      return { points: hull, h: 2.4 };
+    }
     case 'card':
       return { points: [], h: 0 };
   }

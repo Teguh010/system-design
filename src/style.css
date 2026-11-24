@@ -19,6 +19,7 @@
   --k-user: #f3e2cc;
   --k-cdn: #d3ecf5;
   --k-client: #efe6da;
+  --k-tree: #ddd5f3;
   --screen: #cfd9f7;
 
   --p-req: #2f5fd0;
@@ -62,6 +63,7 @@
   --k-user: #c7ad8c;
   --k-cdn: #7fb3c7;
   --k-client: #b9ab98;
+  --k-tree: #9a8fc4;
   --screen: #6f86c9;
 
   --p-req: #7aa2ff;
@@ -1318,6 +1320,7 @@ a.lesson-card:hover {
 .k-user { --c: var(--k-user); }
 .k-cdn { --c: var(--k-cdn); }
 .k-client { --c: var(--k-client); }
+.k-tree { --c: var(--k-tree); }
 
 .face,
 .deco,

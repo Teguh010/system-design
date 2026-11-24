@@ -240,6 +240,56 @@ export const glossaryEntries: GlossaryEntry[] = [
     step: 6,
   },
   {
+    id: 'b-tree',
+    match: ['B-tree', 'B-tree index'],
+    definition: {
+      en: 'A shallow sorted tree of keys — databases walk it in a few page reads instead of scanning the table.',
+      id: 'Pohon kunci terurut yang dangkal — database menjalaninya dengan beberapa baca halaman, bukan scan tabel.',
+    },
+    lessonId: 'indexes',
+    step: 4,
+  },
+  {
+    id: 'full-scan',
+    match: ['full table scan', 'full scan'],
+    definition: {
+      en: 'Reads every row (or page) until a match is found — cost grows with table size.',
+      id: 'Membaca setiap baris (atau halaman) sampai ketemu cocok — biaya naik dengan ukuran tabel.',
+    },
+    lessonId: 'indexes',
+    step: 2,
+  },
+  {
+    id: 'composite-index',
+    match: ['composite index'],
+    definition: {
+      en: 'One index on several columns — column order must match how your WHERE clause filters.',
+      id: 'Satu indeks di beberapa kolom — urutan kolom harus cocok dengan cara klausa WHERE memfilter.',
+    },
+    lessonId: 'indexes',
+    step: 6,
+  },
+  {
+    id: 'acid',
+    match: ['ACID', 'transaction', 'transactions'],
+    definition: {
+      en: 'Atomic, consistent, isolated, durable updates — a relational DB can commit several row changes together.',
+      id: 'Update atomik, konsisten, terisolasi, dan durable — DB relasional bisa commit beberapa perubahan baris sekaligus.',
+    },
+    lessonId: 'sql-nosql',
+    step: 4,
+  },
+  {
+    id: 'nosql',
+    match: ['NoSQL', 'document store', 'document database'],
+    definition: {
+      en: 'Stores tuned for flexible documents or simple keys — trading strict joins for scale or schema freedom.',
+      id: 'Store yang dioptimalkan untuk dokumen fleksibel atau key sederhana — menukar join ketat dengan skala atau kebebasan skema.',
+    },
+    lessonId: 'sql-nosql',
+    step: 6,
+  },
+  {
     id: 'replica',
     match: ['replicas', 'replica', 'read replica'],
     definition: {

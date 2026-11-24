@@ -25,6 +25,9 @@ export const client = make('client');
 
 export const card = (u: number, v: number, title: string, lines: string[]): Entity => ({ kind: 'card', ...at(u, v), title, lines });
 
+/** Tiered nodes for B-tree / index illustrations. */
+export const tree = make('tree');
+
 export const link = (from: string, to: string, extra: Partial<Link> = {}): Link => ({ from, to, ...extra });
 
 /** Split a total rate evenly across several alternative routes (e.g. one per server). */

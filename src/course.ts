@@ -5,6 +5,8 @@ import { latencyThroughput } from './lessons/latency-throughput.ts';
 import { loadBalancing } from './lessons/load-balancing.ts';
 import { napkinMath } from './lessons/napkin-math.ts';
 import { requestLifecycle } from './lessons/request-lifecycle.ts';
+import { indexes } from './lessons/indexes.ts';
+import { sqlNosql } from './lessons/sql-nosql.ts';
 import { stateless } from './lessons/stateless.ts';
 import { urlShortener } from './lessons/url-shortener.ts';
 import { verticalHorizontal } from './lessons/vertical-horizontal.ts';
@@ -55,8 +57,8 @@ export const course: CourseModule[] = [
     title: { en: 'Data & Storage', id: 'Data & Penyimpanan' },
     color: '#8f7fd1',
     lessons: [
-      soon('sql-nosql', 'SQL vs NoSQL'),
-      soon('indexes', 'Indexes', 'Indeks'),
+      ready(sqlNosql, 'SQL vs NoSQL'),
+      ready(indexes, 'Indeks (Indexes)'),
       soon('storage-engines', 'Storage Engines'),
       soon('replication', 'Replication', 'Replikasi'),
       soon('sharding', 'Sharding'),
