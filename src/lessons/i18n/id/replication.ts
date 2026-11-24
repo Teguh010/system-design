@@ -65,15 +65,15 @@ const overlay: LessonOverlay = {
       short: 'Baca panas',
       title: 'Feed membuat database panas',
       body: [
-        'Shelfmark memungkinkan orang menyimpan artikel dan menggulir feed tanpa batas. **Jutaan pembaca**, lebih sedikit penulis — tapi setiap gulir memukul Postgres yang sama dengan <code>SELECT</code> sementara sedikit insert memperbarui timeline.',
-        'CPU baik pada tulis; **I/O baca menempel 100%**. Indeks dari lesson lalu membantu lookup tunggal, tapi menampilkan feed tetap membaca ribuan baris per request.',
+        'Shelfmark memungkinkan orang menyimpan artikel dan menggulir feed tanpa batas. <b>Jutaan pembaca</b>, lebih sedikit penulis — tapi setiap gulir memukul Postgres yang sama dengan <code>SELECT</code> sementara sedikit insert memperbarui timeline.',
+        'CPU baik pada tulis; <b>I/O baca menempel 100%</b>. Indeks dari lesson lalu membantu lookup tunggal, tapi menampilkan feed tetap membaca ribuan baris per request.',
       ],
     },
     {
       short: 'Replica',
       title: 'Tambahkan read replica',
       body: [
-        'Perbaikan pertama yang semua orang coba: pertahankan **primary** untuk tulis, tambah **replica** yang terus menyalin data dan melayani query read-only. Belum ada sumber kebenaran kedua — hanya salinan hangat di mesin lain.',
+        'Perbaikan pertama yang semua orang coba: pertahankan <b>primary</b> untuk tulis, tambah <b>replica</b> yang terus menyalin data dan melayani query read-only. Belum ada sumber kebenaran kedua — hanya salinan hangat di mesin lain.',
         'Armada API harus belajar dua connection string: <code>PRIMARY</code> untuk mutasi, <code>REPLICA</code> untuk feed dan pencarian.',
       ],
       changes: ['+ instance Postgres kedua', '~ baca bisa ditujukan ke replica'],
@@ -82,7 +82,7 @@ const overlay: LessonOverlay = {
       short: 'Leader',
       title: 'Satu leader untuk tulis',
       body: [
-        'Hanya **leader** yang menerima <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>. Replica menerapkan perubahan yang sama berurutan lewat write-ahead log — tidak pernah memulai mutasi, atau kamu risk dua riwayat yang menyimpang.',
+        'Hanya <b>leader</b> yang menerima <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>. Replica menerapkan perubahan yang sama berurutan lewat write-ahead log — tidak pernah memulai mutasi, atau kamu risk dua riwayat yang menyimpang.',
         'Server app Shelfmark berbagi aturan routing: mutasi ke `leader`; sisanya bisa ke `replica` sampai konsistensi penting.',
       ],
       callout: 'Replikasi menyalin leader yang ada. Tidak mengganti protokol konsensus saat dua node bisa menerima tulis.',
@@ -92,7 +92,7 @@ const overlay: LessonOverlay = {
       short: 'Async',
       title: 'Replikasi asinkron',
       body: [
-        'Default replikasi **asinkron**: leader mengakui simpan sebelum WAL dikirim ke replica. p95 **replication lag** Shelfmark sekitar 200 ms — biasanya tak terlihat di feed, terkadang terlihat.',
+        'Default replikasi <b>asinkron</b>: leader mengakui simpan sebelum WAL dikirim ke replica. p95 <b>replication lag</b> Shelfmark sekitar 200 ms — biasanya tak terlihat di feed, terkadang terlihat.',
         'Lag itu jendela saat replica tertinggal. Tulis sukses cepat; pembaca di replica mungkin melihat jumlah bookmark kemarin.',
       ],
       changes: ['+ pengiriman WAL async', '~ leader tidak menunggu fsync replica'],
@@ -102,7 +102,7 @@ const overlay: LessonOverlay = {
       title: 'Kasus: tersimpan, feed masih kosong',
       body: [
         'User mengetuk “Simpan” dan dapat 201 dari leader. Mereka tarik untuk refresh; API feed membaca replica dan baris baru belum tiba. Selama dua ratus milidetik UI tampak rusak.',
-        'Ini **baca basi**. Perbaikan: routing read-your-writes (sementara tempel user ke primary), atau replikasi sync untuk jalur kritis, atau UI optimistik sampai replica menyusul.',
+        'Ini <b>baca basi</b>. Perbaikan: routing read-your-writes (sementara tempel user ke primary), atau replikasi sync untuk jalur kritis, atau UI optimistik sampai replica menyusul.',
       ],
       callout: 'Kalau klien membaca dari replica, kamu harus memutuskan apa yang dilakukan saat lag — abaikan, samarkan, atau bayar sync.',
       changes: ['~ user refresh di jendela lag', '~ replica belum punya baris terbaru'],
@@ -111,7 +111,7 @@ const overlay: LessonOverlay = {
       short: 'Sync',
       title: 'Replikasi sinkron',
       body: [
-        'Untuk baris “uang”, Shelfmark mengaktifkan replikasi **sinkron**: leader menunggu minimal satu replica mengakui sebelum mengonfirmasi tulis. Lag mendekati nol; latency tulis naik karena setiap simpan membayar round trip.',
+        'Untuk baris “uang”, Shelfmark mengaktifkan replikasi <b>sinkron</b>: leader menunggu minimal satu replica mengakui sebelum mengonfirmasi tulis. Lag mendekati nol; latency tulis naik karena setiap simpan membayar round trip.',
         'Kamu pilih per transaksi atau seluruh cluster — kebanyakan tim async default, sync hanya di mana baca basi tidak bisa diterima.',
       ],
       changes: ['~ leader menunggu ack replica', '~ p95 tulis +3 ms (ilustratif)'],
@@ -120,8 +120,8 @@ const overlay: LessonOverlay = {
       short: 'Failover',
       title: 'Kasus: disk primary mati',
       body: [
-        'Satu AZ cloud kehilangan daya. **Leader** berhenti menjawab. Insert gagal sampai seseorang **mempromosikan** replica: berhenti menerapkan sebagai pengikut, terima tulis, rekonfigurasi DNS atau service discovery agar app menemukan leader baru.',
-        'Otomasi (Patroni, failover RDS) melakukan ini dalam menit; runbook manual lebih lama. Detik WAL terakhir di leader lama bisa **hilang** jika replikasi async — **RPO**-mu.',
+        'Satu AZ cloud kehilangan daya. <b>Leader</b> berhenti menjawab. Insert gagal sampai seseorang <b>mempromosikan</b> replica: berhenti menerapkan sebagai pengikut, terima tulis, rekonfigurasi DNS atau service discovery agar app menemukan leader baru.',
+        'Otomasi (Patroni, failover RDS) melakukan ini dalam menit; runbook manual lebih lama. Detik WAL terakhir di leader lama bisa <b>hilang</b> jika replikasi async — <b>RPO</b>-mu.',
       ],
       changes: ['+ leader ditandai down', '~ replica diangkat jadi penulis'],
     },
@@ -129,7 +129,7 @@ const overlay: LessonOverlay = {
       short: 'Split',
       title: 'Hindari dua leader',
       body: [
-        'Kegagalan menakutkan adalah **split brain**: dua node sama-sama percaya mereka primary dan menerima tulis. Data menyimpang dan merge menyakitkan. Runbook memakai STONITH (pagar leader lama), konsensus (Raft — lihat <i>Consensus</i>), atau API cloud yang menjamin hanya satu endpoint writable.',
+        'Kegagalan menakutkan adalah <b>split brain</b>: dua node sama-sama percaya mereka primary dan menerima tulis. Data menyimpang dan merge menyakitkan. Runbook memakai STONITH (pagar leader lama), konsensus (Raft — lihat <i>Consensus</i>), atau API cloud yang menjamin hanya satu endpoint writable.',
         'Replica adalah salinan, bukan pemilih. Promosi harus langkah terkoordinasi dan disengaja.',
       ],
       changes: ['~ aturan failover: satu penulis'],
@@ -138,8 +138,8 @@ const overlay: LessonOverlay = {
       short: 'RPO/RTO',
       title: 'Ukur pemulihan dalam waktu dan data',
       body: [
-        '**RPO** (recovery point objective): berapa banyak data yang boleh hilang — WAL yang tidak ter-replikasi sebelum crash. Async bisa detik; sync bisa nol.',
-        '**RTO** (recovery time objective): berapa lama sampai layanan kembali. Replica panas di region sama = menit; restore dari backup pita = jam. Shelfmark menyimpan **standby** di AZ lain untuk latihan DR.',
+        '<b>RPO</b> (recovery point objective): berapa banyak data yang boleh hilang — WAL yang tidak ter-replikasi sebelum crash. Async bisa detik; sync bisa nol.',
+        '<b>RTO</b> (recovery time objective): berapa lama sampai layanan kembali. Replica panas di region sama = menit; restore dari backup pita = jam. Shelfmark menyimpan <b>standby</b> di AZ lain untuk latihan DR.',
       ],
       changes: ['+ standby di AZ kedua', '~ DR diukur sebagai RPO / RTO'],
     },
