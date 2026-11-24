@@ -1038,6 +1038,68 @@ a.lesson-card:hover {
   margin: 0 0 12px;
 }
 
+.gloss {
+  cursor: help;
+  color: color-mix(in oklab, var(--ink) 82%, var(--info));
+  text-decoration: underline dashed;
+  text-decoration-color: var(--info);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  text-decoration-skip-ink: auto;
+  box-decoration-break: clone;
+  border-radius: 2px;
+  outline: none;
+  transition: background 0.12s ease, text-decoration-color 0.12s ease;
+}
+
+.gloss:hover {
+  text-decoration-style: solid;
+  background: color-mix(in oklab, var(--info) 14%, transparent);
+}
+
+.gloss:focus-visible {
+  text-decoration-style: solid;
+  background: color-mix(in oklab, var(--info) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--info) 55%, transparent);
+}
+
+.glossary-popover {
+  position: fixed;
+  z-index: 500;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 12px 40px color-mix(in oklab, var(--ink) 18%, transparent);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.glossary-popover.is-above {
+  transform: translate(-50%, -100%);
+}
+
+.glossary-popover-def {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.glossary-popover-link {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--info);
+  text-decoration: none;
+}
+
+.glossary-popover-link:hover {
+  text-decoration: underline;
+}
+
 .callout {
   display: grid;
   gap: 4px;

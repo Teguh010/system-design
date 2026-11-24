@@ -69,6 +69,9 @@ const en = {
     req: 'request', res: 'response', slow: 'slow', write: 'write',
     fail: 'failure', poison: 'bad traffic', ping: 'control',
   },
+  glossary: {
+    openLesson: 'Lesson: {title}',
+  },
 } as const;
 
 export type UiMessages = { [K in keyof typeof en]: { [P in keyof (typeof en)[K]]: string } };

@@ -115,6 +115,9 @@ src/
     <lesson-id>.ts         Satu file per lesson (sumber EN)
     i18n/id/<lesson-id>.ts Terjemahan Indonesia
   ui/store.ts              Penyimpanan progres dan tema yang kompatibel dengan versi lama
+  glossary/
+    entries.ts             Kamus istilah EN/ID + lessonId/step (rencana 4.6)
+    enrich.ts              Bungkus istilah di HTML prosa step (rencana 4.6)
 scripts/
   check-i18n.ts            node, dijalankan lewat npm run check:i18n
   test-i18n.ts             tes ICU dan error pesan UI
@@ -294,6 +297,101 @@ membantu kalau ada satu pertanyaan atau satu eksperimen yang jelas, bukan di set
 Layout: step dengan kartu lab/chaos memberi diagram tinggi tetap (`.center.has-play`) dan kolomnya bisa
 di-scroll, supaya diagram tidak tertekan.
 
+### 4.6 Glosarium saat hover (tooltip istilah)
+
+**Tujuan:** Istilah seperti RTT, p99, atau N+1 menampilkan **definisi singkat** dan **tautan ke lesson
+terkait** saat hover (dan fokus keyboard), tanpa menambah paragraf penjelasan di teks lesson. Pemula
+dapat mengecek arti istilah; pembaca lanjutan tidak terganggu.
+
+**Prinsip:**
+
+1. **Satu kamus pusat** — jangan menulis definisi panjang di setiap `body` step. Teks lesson tetap
+   mengikuti 4.1 (2 paragraf); glosarium hanya lapisan UI.
+2. **Definisi pendek** — kira-kira satu kalimat (maks. ~120 karakter EN / ~140 karakter ID). Detail
+   ada di lesson yang ditautkan.
+3. **Jangan paksa markup di lesson** — deteksi otomatis dari teks yang sudah ada; markup eksplisit
+   hanya untuk edge case (lihat di bawah).
+4. **Selaras i18n** — definisi EN/ID di kamus; istilah teknis yang lazim (cache, latency, …) boleh
+   tetap Inggris di overlay ID, sama seperti 4.3.
+5. **Tanpa dependency baru** — tooltip pakai CSS + sedikit React (atau HTML setelah enrich), accessible
+   dengan `:focus-within` / `tabindex="0"`.
+
+**Model data** (`src/glossary/entries.ts`):
+
+```ts
+export type GlossaryEntry = {
+  /** Kunci stabil, misalnya `rtt` */
+  id: string;
+  /** String yang dicocokkan (case-insensitive), urutkan panjang dulu saat regex */
+  match: string[];
+  definition: { en: string; id: string };
+  /** Lesson siap di `course.ts`; kalau `soon`, tautan hanya judul modul / "belum tersedia" */
+  lessonId?: string;
+  /** Step opsional (1-based) — langkah yang paling mengajarkan istilah itu */
+  step?: number;
+};
+```
+
+Contoh entri awal (isi boleh disesuaikan saat implementasi):
+
+| id | match (contoh) | lessonId | step |
+|---|---|---|---|
+| `rtt` | RTT, round-trip time | `request-lifecycle` | 4 |
+| `n-plus-one` | N+1, N+1 query | `request-lifecycle` | 8 |
+| `p99` | p99, p95, percentile | `latency-throughput` | 7 |
+| `throughput` | throughput | `latency-throughput` | 3 |
+| `load-balancer` | load balancer, load balancing | `load-balancing` | 2 |
+| `cache-hit` | cache hit, cache miss | `caching` | 4 |
+| `cdn` | CDN | `cdn` | 2 |
+| `stateless` | stateless | `stateless` | 3 |
+
+Tambah entri seiring lesson baru; jangan mendefinisikan istilah untuk modul yang belum `ready`.
+
+**Alur render** (panel step, predict explain, chaos text, callout — **bukan** label diagram/SVG):
+
+1. Lesson tetap string HTML seperti sekarang (`dangerouslySetInnerHTML` di [ScaleLab.tsx](components/ScaleLab.tsx)).
+2. Sebelum render, jalankan `enrichGlossary(html, locale)`:
+   - Parse ringan atau scan dengan regex **hanya di node teks** (skip tag `code`, isi atribut).
+   - Untuk setiap `match`, gunakan word boundary; urutkan pola dari yang terpanjang agar `round-trip time`
+     tidak terpotong jadi `RTT` + sisa.
+   - Bungkus ke `<span class="gloss" data-gloss="rtt" tabindex="0">…</span>` (class untuk gaya + tooltip).
+3. Tooltip: `::after` / elemen anak dengan `definition` dari kamus (locale aktif) + link
+   `/{locale}/lessons/{lessonId}/{step}/` memakai pola yang sama dengan `lessonPath` di ScaleLab.
+4. Jika `lessonId` belum punya `lesson` di course → tampilkan definisi saja, atau link ke halaman modul
+   tanpa step (keputusan implementasi; catat di checklist).
+
+**Markup eksplisit (opsional, jarang):**
+
+- Jika auto-match salah (misalnya akronim di dalam nama produk), tulis di lesson EN:
+  `<span data-gloss="rtt">RTT</span>` dan biarkan enrich hanya mengisi yang belum dibungkus.
+- Jangan pakai markup wajib di semua lesson — itu melanggar prinsip (3).
+
+**CSS** ([src/style.css](src/style.css)):
+
+- `.gloss`: garis bawah putus-putus atau titik, cursor `help`, warna `--text-muted`.
+- Tooltip: posisi di atas teks di desktop; di bawah kalau tidak muat (heuristik viewport sederhana atau
+  `position: fixed` pada hover — hindari tooltip terpotong `.step-card` `overflow`).
+- Link di tooltip memakai style `.learn a` atau varian kecil; kontras light + dark.
+- **Touch:** tap pertama fokus + buka tooltip; tap di luar menutup (listener ringan di client).
+
+**Pengujian:**
+
+- Unit: `enrichGlossary` tidak mengubah isi `<code>`, tidak merusak `<table class="compare">`, tidak
+  match substring di dalam kata (`app` ≠ `application` kecuali ada entri).
+- `npm run check:i18n`: tidak wajib untuk kamus (bilingual di entri), kecuali ada string UI baru
+  (`glossary.openLesson`, `glossary.soon`).
+- Visual: step ramai (`request-lifecycle` step 8, `latency-throughput` recap) EN + ID, tooltip tidak
+  menabrak sidebar.
+
+**Rollout:**
+
+1. Implementasi kamus + enrich + CSS.
+2. Uji pada lesson yang sudah `ready` (9 lesson); perbaiki false positive.
+3. Centang di bagian 2.
+4. Nanti **Search ⌘K** dapat mengindeks `id`, `match`, dan `lessonId` dari file yang sama.
+
+**Tidak termasuk (v1):** glosarium di label SVG stage, di home hero, atau definisi panjang multi-paragraf.
+
 ---
 
 ## 5. Alur kerja menambah satu lesson (Definition of Done)
@@ -309,6 +407,8 @@ di-scroll, supaya diagram tidak tertekan.
 8. Lihat sendiri minimal step yang paling ramai, di light dan dark mode.
 9. `npm run build` harus lolos.
 10. Centang lesson itu di bagian 2 dan 6 dokumen ini.
+11. Setelah glosarium (4.6) ada: tambahkan entri kamus untuk istilah baru yang muncul di lesson itu
+    (definisi singkat + `lessonId` / `step`).
 
 ---
 
@@ -391,6 +491,7 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 
 ### Platform
 - [x] Migrasi UI ke Next.js (bagian 8).
+- [x] **Glosarium hover (4.6):** `entries.ts` + `enrich.ts` + style tooltip; panel step (+ callout / predict / chaos)
 
 ### Fitur interaktif (4.5) — sebarkan ke lesson lain setelah diuji di `request-lifecycle`
 - [x] `request-lifecycle`: predict di step 3, 8, 9; chaos di step 5; lab di step 10
@@ -399,7 +500,7 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
       `caching` (lab: hit rate → beban DB), `cdn` (lab: jarak pembaca)
 
 ### Ide fitur (opsional, setelah lesson)
-- [ ] Search ⌘K (judul lesson, step, istilah)
+- [ ] Search ⌘K (judul lesson, step, istilah dari kamus 4.6)
 - [ ] Deploy ke Vercel / GitHub Pages
 - [ ] Bahasa ketiga (routing dan `LOCALES`, kamus UI, judul di `course.ts`, overlay per lesson)
 - [ ] Jadikan pemeriksa layout perintah `npm` (misalnya dengan Playwright) supaya bisa jalan di CI
@@ -427,7 +528,7 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 ## 8. Migrasi ke Next.js
 
 Status: **implementasi App Router dan static export selesai**. Backend, Practice, Design Lab,
-search, dan OG image khusus masih pekerjaan mendatang.
+search, glosarium (4.6), dan OG image khusus masih pekerjaan mendatang.
 
 ### Pola implementasi
 
@@ -459,3 +560,4 @@ search, dan OG image khusus masih pekerjaan mendatang.
 - [x] Perbarui pemeriksa i18n dan layout serta hapus entry point Vite.
 - [ ] Ukur performa dan ukuran bundle sebelum mengklaim peningkatan atau target FPS tertentu.
 - [ ] Terus audit tampilan semua step pada berbagai viewport dan tema saat lesson berubah.
+- [x] Glosarium hover (spesifikasi 4.6): kamus, enrich HTML prosa, tooltip + tautan lesson, uji EN/ID.

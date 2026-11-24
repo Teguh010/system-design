@@ -71,6 +71,9 @@ const id = {
     req: 'request', res: 'response', slow: 'lambat', write: 'tulis',
     fail: 'gagal', poison: 'trafik jahat', ping: 'kontrol',
   },
+  glossary: {
+    openLesson: 'Lihat: {title}',
+  },
 } satisfies UiMessages;
 
 export default id;
