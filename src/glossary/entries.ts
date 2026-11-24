@@ -356,8 +356,38 @@ export const glossaryEntries: GlossaryEntry[] = [
       en: 'A copy of the database that serves reads while the leader handles writes.',
       id: 'Salinan database untuk baca sementara leader menangani tulis.',
     },
-    lessonId: 'url-shortener',
-    step: 7,
+    lessonId: 'replication',
+    step: 2,
+  },
+  {
+    id: 'replication-lag',
+    match: ['replication lag'],
+    definition: {
+      en: 'How far a follower trails the leader — async replication almost always has some lag.',
+      id: 'Seberapa jauh follower tertinggal dari leader — replikasi async hampir selalu punya lag.',
+    },
+    lessonId: 'replication',
+    step: 4,
+  },
+  {
+    id: 'rpo',
+    match: ['RPO', 'recovery point objective'],
+    definition: {
+      en: 'Max acceptable data loss if the leader fails — bounded by unreplicated writes.',
+      id: 'Kehilangan data maksimal yang boleh diterima jika leader gagal — dibatasi tulis yang belum ter-replikasi.',
+    },
+    lessonId: 'replication',
+    step: 9,
+  },
+  {
+    id: 'rto',
+    match: ['RTO', 'recovery time objective'],
+    definition: {
+      en: 'Max acceptable downtime while promoting a replica or restoring backups.',
+      id: 'Downtime maksimal yang boleh diterima saat mempromosikan replica atau restore backup.',
+    },
+    lessonId: 'replication',
+    step: 9,
   },
 ];
 

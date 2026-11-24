@@ -4,6 +4,7 @@ import { cdns } from './lessons/cdn.ts';
 import { latencyThroughput } from './lessons/latency-throughput.ts';
 import { loadBalancing } from './lessons/load-balancing.ts';
 import { napkinMath } from './lessons/napkin-math.ts';
+import { replication } from './lessons/replication.ts';
 import { requestLifecycle } from './lessons/request-lifecycle.ts';
 import { indexes } from './lessons/indexes.ts';
 import { storageEngines } from './lessons/storage-engines.ts';
@@ -61,7 +62,7 @@ export const course: CourseModule[] = [
       ready(sqlNosql, 'SQL vs NoSQL'),
       ready(indexes, 'Indeks (Indexes)'),
       ready(storageEngines, 'Mesin Penyimpanan'),
-      soon('replication', 'Replication', 'Replikasi'),
+      ready(replication, 'Replikasi'),
       soon('sharding', 'Sharding'),
       soon('consistent-hashing', 'Consistent Hashing'),
       soon('unique-ids', 'Unique IDs at Scale', 'ID Unik dalam Skala Besar'),
