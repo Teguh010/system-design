@@ -269,8 +269,9 @@ Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau d
 3. **Kontrol perekaman YouTube (`?record=1` & mode lebar) & pembaca web:**
    - Di browser normal, `.beat-card` tampil di pojok kiri bawah panel kanan (tepat di bawah `.learn-card`
      "Yang akan kamu pelajari") agar tidak mengurangi tinggi visualisasi diagram.
-   - Tombol **Wide / Lebar** di header atas (atau shortcut `[`) menyembunyikan sidebar kiri kursus sehingga
-     layar hanya menampilkan visualisasi graph lebar + panel kanan saat screen recording.
+   - Tombol **Wide / Lebar** di header atas (atau shortcut `[`) menyembunyikan sidebar kiri kursus,
+     menyembunyikan kartu *Rusak sistemnya* (`ChaosCard`), dan memadatkan timeline *"Di pelajaran ini"*
+     menjadi satu baris pil ringkas agar ruang visualisasi graph maksimal saat screen recording.
    - Di mode rekam `?record=1`, `.beat-card` ikut disembunyikan dan narator bisa memajukan/memundurkan beat
      secara manual sesuai tempo bicara lewat keyboard: **`↓` / `.`** (beat berikutnya) dan **`↑` / `,`**
      (beat sebelumnya), atau **`R`** untuk mengulang dari beat pertama.

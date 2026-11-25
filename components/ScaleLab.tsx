@@ -256,8 +256,8 @@ function ChaosCard({ step, broken, onToggle, onRepair }: { step: Step; broken: s
   </div>;
 }
 
-function LessonScreen({ lesson, place, locale, step, progress, onProgress, onStepNavigation, onToggleSidebar }: {
-  lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; onProgress: () => void; onStepNavigation: () => void; onToggleSidebar: () => void;
+function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress, onStepNavigation, onToggleSidebar }: {
+  lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; wide: boolean; onProgress: () => void; onStepNavigation: () => void; onToggleSidebar: () => void;
 }) {
   const t = useTranslations();
   const router = useRouter();
@@ -297,12 +297,12 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
 
   // Chaos: entities the reader has broken on this step, in the order they were broken.
   const [broken, setBroken] = useState<string[]>([]);
-  useEffect(() => setBroken([]), [index]);
-  const canBreak = !!current.chaos;
+  useEffect(() => setBroken([]), [index, wide]);
+  const canBreak = !!current.chaos && !wide;
   const toggleBroken = useCallback((id: string) => {
-    if (!current.chaos?.[id]) return;
+    if (!current.chaos?.[id] || wide) return;
     setBroken((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
-  }, [current.chaos]);
+  }, [current.chaos, wide]);
   const brokenKey = broken.join(',');
   useEffect(() => {
     if (!hasBeats || !beatAuto || paused || brokenKey || beatIndex >= beats.length - 1) return;
@@ -504,6 +504,6 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
       <Link className="brand" href={homePath(locale)}><svg viewBox="0 0 28 28" width="22" height="22" aria-hidden="true"><polygon points="14,3 25,8.5 14,14 3,8.5" className="logo-top" /><polygon points="3,8.5 14,14 14,25 3,19.5" className="logo-l" /><polygon points="25,8.5 14,14 14,25 25,19.5" className="logo-r" /></svg>Scale Lab</Link>
       <div className="top-right"><div className="lang" role="group" aria-label={t('lang.label')}>{LOCALES.map((l) => <button key={l.id} type="button" title={l.name} aria-pressed={l.id === locale} onClick={() => switchLocale(l.id)}>{l.short}</button>)}</div><button className="icon-btn theme" type="button" title={t('theme.toggle')} aria-label={t('theme.toggle')} onClick={() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark')}>◐</button></div>
     </header>
-    <div className={`shell${navHidden ? ' is-nav-hidden' : ''}`}><Sidebar locale={locale} currentId={lesson?.id} progress={progress} /><div className="nav-scrim" onClick={closeNav} /><main id="view">{lesson && found ? <LessonScreen key={`${locale}/${lesson.id}`} lesson={lesson} place={found} locale={locale} step={step} progress={progress} onProgress={refreshProgress} onStepNavigation={closeNav} onToggleSidebar={toggleSidebar} /> : <Home locale={locale} progress={progress} />}</main></div>
+    <div className={`shell${navHidden ? ' is-nav-hidden' : ''}`}><Sidebar locale={locale} currentId={lesson?.id} progress={progress} /><div className="nav-scrim" onClick={closeNav} /><main id="view">{lesson && found ? <LessonScreen key={`${locale}/${lesson.id}`} lesson={lesson} place={found} locale={locale} step={step} progress={progress} wide={navHidden} onProgress={refreshProgress} onStepNavigation={closeNav} onToggleSidebar={toggleSidebar} /> : <Home locale={locale} progress={progress} />}</main></div>
   </>;
 }
