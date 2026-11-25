@@ -18,7 +18,7 @@ const overlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
   'id/sharding': () => import('./i18n/id/sharding.ts'),
 };
 
-const PREFIX = /^([!✓#] )/;
+const PREFIX = /^([!✓#>] )/;
 
 export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
   const labels = o.labels ?? {};

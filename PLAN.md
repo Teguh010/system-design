@@ -86,8 +86,12 @@ npm run check:export # periksa HTML lesson setelah build
 ### Riwayat revisi penting
 - `replication` pilot **lebih baik dari referensi**: step 1 satu DB tanpa replica, kartu on-call,
   `predict` (step 2 & 6), `chaos` (step 3), metrik `reads on primary`, glosarium stale read / RYW / split brain.
-- `request-lifecycle` jadi **lesson acuan visual**: konteks tetap tampil, label di garis, meter CPU,
-  metrik yang menjumlah ke total, dan catatan `changes`. Lesson lain belum memakai fitur ini (lihat 6).
+- `request-lifecycle` jadi **lesson acuan visual (4.1b + 4.1c)**: konteks tetap tampil, label di garis, meter CPU,
+  metrik yang menjumlah ke total, catatan `changes`, serta **kartu runtime `trace`** berposisi konsisten dengan
+  sorotan baris aktif (`> `) untuk memvisualkan proses internal (DNS cache miss chain, TCP+TLS 2 RTT,
+  server runtime stack, TTFB ledger + arah paket satu arah `~bw`, HTTP/2 waterfall, N+1 I/O wait, dan
+  persamaan latency live di lab) agar terbaca mandiri saat mode rekam YouTube (`?record=1`). Lesson lain
+  belum memakai standar penuh ini (lihat 6).
 - `request-lifecycle` ditulis ulang (EN + ID). Sekarang dibuka dengan masalah, tanpa load balancer/CDN,
   dengan case N+1 query dan pembaca jauh, dan recap yang merujuk ke lesson lain.
 - `latency-throughput`: load balancer di step 6–10 diganti satu antrean bersama + 4 worker.
@@ -215,6 +219,30 @@ ditangkap **dari diagramnya saja**, tanpa membaca teks:
 9. Label di garis sebaiknya pendek (≤ 22 karakter) dan jarak antar-entitas cukup lebar (`u` ≥ 18–20)
    supaya pilnya tidak menutupi seluruh garis.
 
+### 4.1c Visual Mental Modeling & Runtime Trace (Standar Tutorial YouTube / `?record=1`)
+
+Karena materi dipakai untuk tutorial YouTube (terutama mode `?record=1` yang menyembunyikan panel kanan
+dan hanya menampilkan judul, metrik, dan stage), **hal-hal internal runtime yang biasanya tak terlihat**
+harus divisualkan secara presisi di atas stage:
+
+1. **Buat proses internal runtime eksplisit (bukan kotak hitam).** Gunakan kartu `card` dengan id konsisten
+   (misalnya `trace`) yang posisinya stabil antar-step (di `request-lifecycle`: `(24, 21–22)`, bergeser ke
+   `(30, 23–24)` hanya saat ada entitas tambahan di bawah) agar mata penonton tetap terkunci pada "panel
+   eksekusi runtime": rantai cache miss DNS, pesan handshake per RTT, tumpukan kerja server per milidetik,
+   rincian TTFB, gelombang waterfall HTTP/2, atau loop N+1 query.
+2. **Sorot baris eksekusi aktif dengan prefiks `> `.** Kartu mendukung 4 prefiks warna/sorot: `! ` (merah/masalah),
+   `✓ ` (hijau/selesai), `# ` (abu-abu/catatan), dan `> ` (biru + strip sorot untuk langkah/kesimpulan yang
+   sedang aktif). Jangan mengubah perataan kolom monospace.
+3. **Arah dan ritme paket harus jujur terhadap mekanisme.** Setiap step harus punya pembeda visual yang jelas
+   dari step sebelumnya: saat membahas response kembali (TTFB), alirkan paket satu arah ke client
+   (`route: ['~bw'], kind: 'res'`) dan buat link database `dashed: true, label: 'idle'`, bukan mengulang flow
+   bolak-balik yang identik dengan step query.
+4. **Perlihatkan sebab-akibat angka langsung di diagram.** Kontras seperti "CPU turun ke 15% padahal waktu
+   server naik ke 440 ms karena I/O wait" atau "99% waktu pembaca jauh habis di jarak, kerja server tetap 25 ms"
+   wajib terlihat dari kombinasi badge + meter + kartu `trace` tanpa perlu membaca paragraf kanan.
+5. **Sinkronkan kartu runtime dengan Lab (`src/lessons/labs/`).** Bila step memiliki lab slider, perbarui
+   kartu `trace` di `compute()` agar persamaan/breakdown ikut bergerak live bersama metrik dan kecepatan paket.
+
 ### 4.2 Scene dan layout
 
 - Tulis posisi dengan `at(u, v)` lewat helper: `u` = kanan, `v` = bawah. Jangan pakai `x/y` isometrik mentah.
@@ -248,7 +276,7 @@ ditangkap **dari diagramnya saja**, tanpa membaca teks:
 - **String diagram** dicocokkan **berdasarkan teks Inggris persis** lewat `labels`. Ini mencakup label,
   sub, judul kartu, baris kartu, badge, label garis, label meter, nilai metrik, dan label legend.
 - **`changes`** diterjemahkan berdasarkan posisi (`steps[i].changes[j]`); jumlahnya harus sama.
-  - Untuk baris kartu yang berawalan `! ` / `✓ ` / `# `, kuncinya adalah teks **tanpa** prefiks.
+  - Untuk baris kartu yang berawalan `! ` / `✓ ` / `# ` / `> `, kuncinya adalah teks **tanpa** prefiks.
   - Jaga perataan kolom di baris kartu (font monospace).
 - Istilah teknis yang lazim tetap dalam bahasa Inggris: cache, load balancer, request, response,
   latency, throughput, shard, replica, queue, worker, deploy, dan sejenisnya.
@@ -486,15 +514,15 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 | [ ] Design a News Feed | `news-feed` | Fan-out on write vs read, akun selebriti, ranking, cache timeline | — |
 | [ ] Design a Chat System | `chat` | WebSocket gateway, presence, urutan pesan, offline delivery, reconnect storm | — |
 
-### Upgrade visual lesson lama (ke standar 4.1b)
-- [x] `request-lifecycle`
-- [ ] `latency-throughput` (meter utilisasi di worker, label antrean)
+### Upgrade visual lesson lama (ke standar 4.1b + 4.1c)
+- [x] `request-lifecycle` (4.1b + 4.1c: kartu runtime `trace`, prefiks aktif `> `, arah respon `~bw`, lab sync)
+- [ ] `latency-throughput` (meter utilisasi di worker, label antrean, kartu runtime antrean M/M/c)
 - [ ] `napkin-math`
-- [ ] `vertical-horizontal` (meter CPU di server)
-- [ ] `load-balancing` (meter per server, label algoritme)
-- [ ] `stateless`
-- [ ] `caching` (label hit/miss di garis, meter hit rate)
-- [ ] `cdn` (label RTT di garis)
+- [ ] `vertical-horizontal` (meter CPU di server, kartu runtime kapasitas)
+- [ ] `load-balancing` (meter per server, label algoritme, state health check)
+- [ ] `stateless` (visual state session di memori vs external store)
+- [ ] `caching` (label hit/miss di garis, meter hit rate, runtime lookup path)
+- [ ] `cdn` (label RTT di garis, kartu breakdown edge hit vs origin miss)
 - [ ] `url-shortener`
 
 ### Platform

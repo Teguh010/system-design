@@ -1703,6 +1703,15 @@ a.lesson-card:hover {
 .card-line.bad { fill: var(--bad); }
 .card-line.good { fill: var(--good); }
 .card-line.muted { fill: var(--muted); }
+.card-line.active { fill: var(--info); font-weight: 700; }
+
+.card-active-bg {
+  fill: color-mix(in oklab, var(--info) 13%, transparent);
+}
+
+.card-active-bar {
+  fill: var(--info);
+}
 
 /* ── links & packets ────────────────────────────────────── */
 

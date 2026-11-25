@@ -1,5 +1,6 @@
 import type { Locale } from '../../i18n/index.ts';
-import type { Flow, MetricValue, Scene, Tone } from '../../types.ts';
+import type { Entity, Flow, MetricValue, Scene, Tone } from '../../types.ts';
+import { card } from '../helpers.ts';
 import type { Lab } from './index.ts';
 
 export interface Breakdown {
@@ -76,10 +77,43 @@ export const requestLifecycleLab: Lab = {
       ? `Komponen terbesar: ${name} (${formatMs(ms, locale)}). Kecilkan yang itu dulu.`
       : `Biggest term: ${name} (${formatMs(ms, locale)}). Shrink that one first.`;
 
-    const { far: _far, ...entities } = base.entities;
+    const { far: _far, ...restEntities } = base.entities;
     const { fw: _fw, ...links } = base.links ?? {};
     const slowNet = rtt >= 150;
     const slowWork = work >= 200;
+    const tTotal = totalTone(b.total);
+    const netTone = slowNet ? 'bad' : rtt >= 80 ? 'warn' : 'good';
+    const workTone = slowWork ? 'bad' : work >= 100 ? 'warn' : 'good';
+
+    const entities: Record<string, Entity> = {
+      ...restEntities,
+      ...(restEntities.browser && {
+        browser: {
+          ...restEntities.browser,
+          sub: `RTT ${rtt} ms`,
+          badge: { text: formatMs(b.total, locale, true), tone: tTotal },
+        },
+      }),
+      ...(restEntities.web && {
+        web: {
+          ...restEntities.web,
+          badge: { text: `${locale === 'id' ? 'kerja' : 'work'} ${work} ms`, tone: workTone },
+        },
+      }),
+      trace: card(
+        24,
+        22,
+        locale === 'id' ? 'Persamaan latency (live)' : 'Latency equation (live)',
+        [
+          `${netTone === 'good' ? '✓' : '!'} DNS + TLS:  ${formatMs(b.dns + b.connect, locale)}`,
+          `${workTone === 'good' ? '✓' : '!'} req + work: ${formatMs(b.server, locale)}`,
+          `${termTone(b.download) ? '!' : '✓'} download:   ${formatMs(b.download, locale)}`,
+          `> ${locale === 'id' ? 'siap' : 'page ready'}: ${formatMs(b.total, locale, true)}`,
+          `# ${locale === 'id' ? 'terbesar' : 'biggest'}: ${name}`,
+        ],
+      ),
+    };
+
     const flows: Flow[] = [
       { route: ['bw'], rate: 0.9, bounce: true, ...(slowNet && { kind: 'slow' as const }), speed: Math.max(35, 165 - rtt * 0.35) },
       { route: ['wd'], rate: 0.9, bounce: true, ...(slowWork && { kind: 'slow' as const }), speed: slowWork ? 80 : 165 },

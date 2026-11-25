@@ -2,18 +2,20 @@ import type { Entity, Flow, Lesson, Link, Scene } from '../types.ts';
 import { card, client, db, link, server, service } from './helpers.ts';
 
 const BROWSER = client(0, 0, { label: 'you', sub: 'browser' });
-const FAR = client(0, 19, { label: 'reader far away', sub: 'mobile, other continent' });
+const FAR = client(0, 19, { label: 'reader far away', sub: '300 ms RTT · mobile' });
 const RESOLVER = service(11, -19, { label: 'DNS resolver', icon: 'globe' });
 const AUTH = service(28, -25, { label: 'authoritative DNS', sub: 'news.example', icon: 'globe' });
 const WEB = server(23, 0, { label: 'web server', sub: 'news.example', icon: 'server', count: 3 });
 const DB = db(42, 0, { label: 'database', icon: 'database', fill: 0.45 });
 
-const CACHED = RESOLVER;
 const dnsLink = link('browser', 'resolver', { dashed: true, label: 'cached · 5 min' });
 
 interface TripOpts {
+  browser?: Partial<Entity>;
+  resolver?: Partial<Entity>;
   web?: Partial<Entity>;
   db?: Partial<Entity> | false;
+  dns?: Partial<Link>;
   request?: Partial<Link>;
   query?: Partial<Link>;
   far?: Partial<Link> | false;
@@ -23,11 +25,18 @@ interface TripOpts {
 
 /**
  * The whole journey stays on stage: you, the (now cached) resolver, the web server and the database.
- * Steps only change labels, meters and traffic.
+ * Steps only change labels, meters, runtime trace cards and traffic.
  */
 function trip(o: TripOpts): Scene {
-  const entities: Record<string, Entity> = { browser: BROWSER, resolver: CACHED, web: { ...WEB, ...o.web } };
-  const links: Record<string, Link> = { br: dnsLink, bw: link('browser', 'web', { arrow: true, ...o.request }) };
+  const entities: Record<string, Entity> = {
+    browser: { ...BROWSER, ...o.browser },
+    resolver: { ...RESOLVER, ...o.resolver },
+    web: { ...WEB, ...o.web },
+  };
+  const links: Record<string, Link> = {
+    br: { ...dnsLink, ...o.dns },
+    bw: link('browser', 'web', { arrow: true, ...o.request }),
+  };
   if (o.db !== false) {
     entities.db = { ...DB, ...o.db };
     links.wd = link('web', 'db', { arrow: true, ...o.query });
@@ -78,9 +87,13 @@ export const requestLifecycle: Lesson = {
         entities: {
           browser: { ...BROWSER, focus: true },
           web: server(23, 0, { label: 'news.example', sub: 'somewhere out there', ghost: true, count: 3 }),
-          card: card(23, -17, 'Reader complaints', ['usually opens in ~0.4 s', '! some readers wait 2 s or more', '# where does the time go?']),
+          trace: card(23, -18, 'Latency mystery', [
+            '✓ team test:  ~0.4 s (400 ms)',
+            '! some users:  2.0 s+',
+            '> trace every hop from click',
+          ]),
         },
-        links: { bw: link('browser', 'web', { dashed: true, arrow: true, label: 'click' }) },
+        links: { bw: link('browser', 'web', { dashed: true, arrow: true, label: 'click → article' }) },
         flows: [{ route: ['bw'], rate: 0.6, bounce: true }],
       },
     },
@@ -93,19 +106,25 @@ export const requestLifecycle: Lesson = {
         'A cold lookup costs a few round trips, often 20–100 ms. The answer comes with a <b>TTL</b>, so for a while every later lookup is answered from a cache in well under a millisecond.',
       ],
       callout: { kind: 'tip', text: 'Short TTLs let you move traffic quickly during an incident; long TTLs make lookups cheaper. Choose per record.' },
-      changes: ['+ browser asks a resolver for news.example'],
+      changes: ['+ browser & OS caches miss; resolver walks hierarchy for news.example'],
       metrics: { dns: '40 ms' },
       scene: {
         entities: {
-          browser: BROWSER,
-          resolver: RESOLVER,
+          browser: { ...BROWSER, badge: { text: 'cache: MISS', tone: 'warn' } },
+          resolver: { ...RESOLVER, sub: 'ISP / public', badge: { text: 'cache: MISS', tone: 'warn' } },
           auth: AUTH,
           web: server(23, 0, { label: 'news.example', sub: '203.0.113.7', ghost: true, count: 3 }),
+          trace: card(24, 21, 'DNS lookup · 40 ms', [
+            '# 1. browser cache: MISS',
+            '# 2. OS cache:      MISS',
+            '> 3. resolver → root → auth',
+            '✓ 4. 203.0.113.7 (TTL 5 min)',
+          ]),
         },
         links: {
           br: link('browser', 'resolver', { arrow: true, label: 'news.example?' }),
-          ra: link('resolver', 'auth', { arrow: true, label: 'not cached: ask' }),
-          bw: link('browser', 'web', { dashed: true }),
+          ra: link('resolver', 'auth', { arrow: true, label: 'root → .example → auth' }),
+          bw: link('browser', 'web', { dashed: true, label: 'needs IP first' }),
         },
         flows: [{ route: ['br', 'ra'], kind: 'ping', rate: 0.7, bounce: true, returnKind: 'ping' }],
       },
@@ -120,12 +139,20 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'insight', text: 'Round-trip time (RTT) is the unit of network latency. Count the round trips, then multiply.' },
       changes: ['+ DNS answer cached for 5 minutes', '+ TCP + TLS handshake: 2 round trips of 30 ms'],
-
       metrics: { connect: '60 ms' },
       scene: trip({
         db: false,
-        web: { sub: '203.0.113.7' },
+        resolver: { badge: { text: 'TTL 5 min', tone: 'good' } },
+        web: { sub: '203.0.113.7', badge: { text: 'TLS 1.3 · open', tone: 'good' } },
         request: { label: 'TCP + TLS · 2 RTT' },
+        extra: {
+          trace: card(24, 21, 'Handshake · 2 RTT = 60 ms', [
+            '✓ RTT 1 (TCP): SYN → ← SYN-ACK',
+            '> RTT 2 (TLS): ACK+Hello → ← Cert',
+            '✓ socket: open · encrypted',
+            '# 0 bytes of article sent yet',
+          ]),
+        },
         flows: [{ route: ['bw'], kind: 'ping', rate: 1.2, bounce: true, returnKind: 'ping' }],
       }),
     },
@@ -141,8 +168,18 @@ export const requestLifecycle: Lesson = {
       metrics: { server: '30 ms + work' },
       scene: trip({
         db: false,
+        browser: { badge: { text: 'socket open', tone: 'info' } },
+        web: { badge: { text: 'parse + cookie', tone: 'info' } },
         request: { label: 'GET /storm-warning' },
-        extra: { card: card(40, -16, 'HTTP request', ['GET /2026/11/storm-warning', 'Host: news.example', 'Accept-Language: en', 'Cookie: session=7f3a…']) },
+        extra: {
+          trace: card(24, 21, 'HTTP request · ~400 B', [
+            '> GET /2026/11/storm-warning',
+            '  Host: news.example',
+            '  Accept-Language: en',
+            '✓ Cookie: session=7f3a…',
+            '# 0.5 RTT wire trip (15 ms)',
+          ]),
+        },
         flows: [{ route: ['bw'], rate: 1.2, bounce: true }],
       }),
     },
@@ -171,8 +208,18 @@ export const requestLifecycle: Lesson = {
       metrics: { server: '55 ms' },
       scene: trip({
         web: CPU(0.2),
+        db: { badge: { text: '3 queries · 15 ms', tone: 'good' } },
         request: { label: 'GET /storm-warning' },
-        query: { label: 'SELECT article · 5 ms' },
+        query: { label: '3 SQL · 0.5 ms RTT' },
+        extra: {
+          trace: card(24, 22, 'Server runtime · 25 ms work', [
+            '✓ 1. verify cookie     1 ms',
+            '✓ 2. SELECT article    5 ms',
+            '✓ 3. SELECT author     4 ms',
+            '✓ 4. SELECT comments   6 ms',
+            '> 5. render HTML       9 ms',
+          ]),
+        },
         flows: [{ route: ['bw', 'wd'], rate: 1.6, bounce: true }],
       }),
     },
@@ -185,13 +232,24 @@ export const requestLifecycle: Lesson = {
         'The browser starts drawing straight away — and discovers, while reading the HTML, that it needs more.',
       ],
       callout: { kind: 'tip', text: 'TTFB is the number to watch for your backend. Most of what happens after it is front-end work and network.' },
-      changes: ['+ HTML arrives: first byte after ~155 ms'],
+      changes: ['+ HTML arrives: first byte after ~155 ms', '~ database queries are done; response streams back'],
       metrics: { download: '15 ms', total: '170 ms' },
       scene: trip({
-        web: CPU(0.2),
+        browser: { badge: { text: 'TTFB 155 ms', tone: 'good' } },
+        web: { ...CPU(0.1), badge: { text: 'streaming HTML', tone: 'good' } },
+        db: { badge: { text: 'queries done', tone: 'good' } },
         request: { label: 'HTML · first byte at 155 ms', labelTone: 'good' },
-        query: { label: 'SELECT article · 5 ms' },
-        flows: [{ route: ['bw', 'wd'], rate: 1.6, bounce: true }],
+        query: { dashed: true, label: 'idle' },
+        extra: {
+          trace: card(24, 22, 'TTFB ledger · 155 ms', [
+            '✓ DNS + TCP + TLS     100 ms',
+            '✓ req (15) + work (25) 40 ms',
+            '✓ first byte back      15 ms',
+            '> parse <html> (+15 ms stream)',
+            '# found: CSS, JS, fonts, imgs',
+          ]),
+        },
+        flows: [{ route: ['~bw'], kind: 'res', rate: 1.8, speed: 170 }],
       }),
     },
     {
@@ -205,9 +263,18 @@ export const requestLifecycle: Lesson = {
       changes: ['+ 40 more files over the same connection'],
       metrics: { download: '245 ms', total: { v: '400 ms', tone: 'good' } },
       scene: trip({
-        web: CPU(0.3),
+        browser: { badge: { text: 'HTTP/2 · 1 pipe', tone: 'info' } },
+        web: { ...CPU(0.3), badge: { text: '40 files served', tone: 'good' } },
         request: { label: '40 files · HTTP/2' },
         query: { label: 'SELECT article · 5 ms' },
+        extra: {
+          trace: card(24, 21, 'HTTP/2 waterfall · 245 ms', [
+            '✓ 1 open pipe (no new TLS)',
+            '✓ wave 1: CSS + JS in parallel',
+            '✓ wave 2: fonts + 38 images',
+            '> page ready: 40+60+55+245 = 400 ms',
+          ]),
+        },
         flows: [
           { route: ['bw', 'wd'], rate: 0.8, bounce: true },
           { route: ['bw'], rate: 3, bounce: true, speed: 200 },
@@ -224,13 +291,21 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'warning', text: 'Measure before optimising. When the network is fine but the server column grows, count the queries before buying hardware.' },
       changes: ['+ comments load each author separately: 40 extra queries', '~ server CPU drops — it is waiting, not working'],
-
       metrics: { server: { v: '440 ms', tone: 'bad' }, total: { v: '785 ms', tone: 'bad' } },
       scene: trip({
-        web: CPU(0.15),
+        web: { ...CPU(0.15, 'info'), badge: { text: 'blocked · I/O wait', tone: 'warn' } },
         db: { badge: { text: '41 queries · 410 ms', tone: 'bad' } },
         request: { label: 'GET /storm-warning' },
         query: { label: 'SELECT author × 40', labelTone: 'bad' },
+        extra: {
+          trace: card(24, 22, 'N+1 execution trace', [
+            '✓ 1× SELECT comments    10 ms',
+            '! loop 40× SELECT author',
+            '!   40 × 10 ms = 400 ms wait',
+            '> CPU drops to 15% (I/O wait)',
+            '# fix: 1 JOIN query → ~15 ms',
+          ]),
+        },
         flows: [
           { route: ['bw'], rate: 0.5, bounce: true, speed: 90 },
           { route: ['wd'], kind: 'slow', rate: 1.6, bounce: true, speed: 90 },
@@ -247,7 +322,6 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'insight', text: 'Latency has two big sources: work on the server and distance on the network. They need different fixes.' },
       changes: ['+ a reader with a 300 ms round trip', '~ N+1 fixed: server work is back to normal', '~ every round trip costs 10× more'],
-
       metrics: {
         dns: { v: '100 ms', tone: 'warn' },
         connect: { v: '600 ms', tone: 'bad' },
@@ -256,10 +330,23 @@ export const requestLifecycle: Lesson = {
         total: { v: '~2.0 s', tone: 'bad' },
       },
       scene: trip({
-        web: CPU(0.2),
+        browser: { sub: 'local · 30 ms RTT', badge: { text: '400 ms total', tone: 'good' } },
+        web: { ...CPU(0.2), badge: { text: 'work still 25 ms', tone: 'good' } },
+        db: { badge: { text: 'healthy · 5 ms', tone: 'good' } },
         request: { label: 'RTT 30 ms' },
         query: { label: 'SELECT article · 5 ms' },
-        far: { label: 'RTT 300 ms', labelTone: 'bad' },
+        far: { label: 'RTT 300 ms (10×)', labelTone: 'bad' },
+        extra: {
+          far: { ...FAR, badge: { text: '~2.0 s total', tone: 'bad' } },
+          trace: card(30, 24, 'Distance cost · 300 ms RTT', [
+            '✓ server work:      25 ms (1%)',
+            '! DNS cold:        100 ms',
+            '! TCP+TLS (2 RTT): 600 ms',
+            '! req+res (1 RTT): 300 ms',
+            '! 40 files:      1,000 ms',
+            '> 99% of ~2.0 s is distance',
+          ]),
+        },
         flows: [
           { route: ['bw', 'wd'], rate: 0.8, bounce: true },
           { route: ['fw'], kind: 'slow', rate: 0.8, bounce: true, speed: 45 },
@@ -281,10 +368,20 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'insight', text: 'Latency is a sum. Write down the terms, find the biggest, and shrink that one first.' },
       scene: trip({
+        browser: { sub: 'local · 30 ms RTT', badge: { text: '400 ms', tone: 'good' } },
         web: CPU(0.2),
         request: { label: 'RTT 30 ms' },
         query: { label: 'SELECT article · 5 ms' },
         far: { label: 'RTT 300 ms', labelTone: 'warn' },
+        extra: {
+          far: { ...FAR, badge: { text: '~2.0 s', tone: 'bad' } },
+          trace: card(30, 23, 'Latency equation', [
+            'page = DNS + TLS + (1 RTT + work) + dl',
+            '✓ local (30 ms RTT):    400 ms',
+            '! far (300 ms RTT):   ~2,000 ms',
+            '> shrink the biggest term first',
+          ]),
+        },
         flows: [
           { route: ['bw', 'wd'], rate: 1, bounce: true },
           { route: ['fw'], kind: 'slow', rate: 0.5, bounce: true, speed: 45 },

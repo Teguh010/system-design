@@ -345,7 +345,7 @@ function meter(g: G, m: NonNullable<Entity['meter']>, cy: number): number {
 function drawCard(g: G, e: Entity): Omit<Geo, 'foot'> {
   const lines = e.lines ?? [];
   const title = e.title ?? '';
-  const w = Math.max(textWidth(title, 12, 700), ...lines.map((l) => textWidth(l.replace(/^[!✓#] /, ''), 11))) + 28;
+  const w = Math.max(textWidth(title, 12, 700), ...lines.map((l) => textWidth(l.replace(/^[!✓#>] /, ''), 11))) + 28;
   const h = 34 + lines.length * 17 + 8;
   const x = -w / 2;
   const y = -h / 2;
@@ -354,9 +354,14 @@ function drawCard(g: G, e: Entity): Omit<Geo, 'foot'> {
   svg('text', { x: x + 14, y: y + 20, class: 'card-title' }, g).textContent = title;
   svg('line', { x1: x + 14, x2: x + w - 14, y1: y + 30, y2: y + 30, class: 'card-rule' }, g);
   lines.forEach((l, i) => {
-    const tone = l.startsWith('! ') ? 'bad' : l.startsWith('✓ ') ? 'good' : l.startsWith('# ') ? 'muted' : '';
+    const tone = l.startsWith('! ') ? 'bad' : l.startsWith('✓ ') ? 'good' : l.startsWith('# ') ? 'muted' : l.startsWith('> ') ? 'active' : '';
     const text = tone ? l.slice(2) : l;
-    const t = svg('text', { x: x + 14, y: y + 48 + i * 17, class: `card-line ${tone}` }, g);
+    const ly = y + 48 + i * 17;
+    if (tone === 'active') {
+      svg('rect', { x: x + 8, y: ly - 11.5, width: w - 16, height: 15, rx: 4, class: 'card-active-bg' }, g);
+      svg('rect', { x: x + 8, y: ly - 11.5, width: 2.5, height: 15, rx: 1, class: 'card-active-bar' }, g);
+    }
+    const t = svg('text', { x: x + 14, y: ly, class: `card-line ${tone}` }, g);
     t.textContent = text;
     t.setAttribute('xml:space', 'preserve');
   });

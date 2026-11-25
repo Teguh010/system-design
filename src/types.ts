@@ -39,7 +39,7 @@ export interface Entity {
    * sets it, the entities added or changed by the step glow instead.
    */
   focus?: boolean;
-  /** Card title and monospace lines. Prefix a line with `! `, `✓ ` or `# ` to colour it. */
+  /** Card title and monospace lines. Prefix a line with `! `, `✓ `, `# ` or `> ` to colour/highlight it. */
   title?: string;
   lines?: string[];
 }

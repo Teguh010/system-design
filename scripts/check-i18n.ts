@@ -21,7 +21,7 @@ for (const entry of allLessons) {
   for (const s of lesson.steps) {
     for (const e of Object.values<any>(s.scene.entities)) {
       add(e.label); add(e.sub); add(e.title); add(e.badge?.text);
-      e.lines?.forEach((l: string) => add(/^[!✓#] /.test(l) ? l.slice(2) : l));
+      e.lines?.forEach((l: string) => add(/^[!✓#>] /.test(l) ? l.slice(2) : l));
     }
     for (const l of Object.values<any>(s.scene.links ?? {})) add(l.label);
     for (const e of Object.values<any>(s.scene.entities)) add(e.meter?.label);
