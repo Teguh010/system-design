@@ -84,6 +84,43 @@ export const requestLifecycle: Lesson = {
       ],
       callout: { kind: 'insight', text: 'Opening a page is a chain of handoffs between machines. Every step costs time, and those numbers add up.' },
       metrics: { dns: '?', connect: '?', server: '?', download: '?', total: { v: '0.4 s … 2 s+', tone: 'warn' } },
+      beats: [
+        {
+          label: 'On your laptop',
+          duration: 2200,
+          entities: {
+            browser: { focus: true, badge: { text: '~0.4 s', tone: 'good' } },
+            web: { ghost: true },
+            trace: {
+              lines: ['> on your laptop:  ~0.4 s', '# some readers:     2.0 s+', '# follow 1 click step by step'],
+            },
+          },
+          flows: [{ route: ['bw'], rate: 1.4, bounce: true, once: 1 }],
+        },
+        {
+          label: 'Some readers',
+          duration: 2400,
+          entities: {
+            browser: { focus: false },
+            web: { ghost: false, badge: { text: '2.0 s+', tone: 'bad' } },
+            trace: {
+              lines: ['✓ on your laptop:  ~0.4 s', '> some readers:     2.0 s+', '# follow 1 click step by step'],
+            },
+          },
+          flows: [{ route: ['bw'], kind: 'slow', rate: 0.45, bounce: true }],
+        },
+        {
+          label: 'Step by step',
+          entities: {
+            browser: { focus: true, badge: { text: 'click article', tone: 'info' } },
+            web: { ghost: true },
+            trace: {
+              lines: ['✓ on your laptop:  ~0.4 s', '! some readers:     2.0 s+', '> follow 1 click step by step'],
+            },
+          },
+          flows: [{ route: ['bw'], rate: 0.6, bounce: true }],
+        },
+      ],
       scene: {
         entities: {
           browser: { ...BROWSER, focus: true },
@@ -321,23 +358,58 @@ export const requestLifecycle: Lesson = {
           metrics: { server: '31 ms' },
         },
         {
-          label: '3 DB queries',
-          duration: 2600,
+          label: 'Read article',
+          duration: 2200,
           entities: {
-            web: CPU(0.15),
+            web: { ...CPU(0.1), focus: true },
+            db: { focus: true, badge: { text: '1 query · 5 ms', tone: 'good' } },
+            trace: {
+              title: 'Server work · 6 ms',
+              lines: ['✓ 1. check session     1 ms', '> 2. read article      5 ms', '# 3. read author       4 ms', '# 4. read comments     6 ms', '# 5. build HTML        9 ms'],
+            },
+          },
+          links: { wd: { label: 'read article · 5 ms' } },
+          flows: [{ route: ['wd'], rate: 2.2, bounce: true, once: 1 }],
+          metrics: { server: '36 ms' },
+        },
+        {
+          label: 'Read author',
+          duration: 2200,
+          entities: {
+            web: { ...CPU(0.12), focus: true },
+            db: { focus: true, badge: { text: '2 queries · 9 ms', tone: 'good' } },
+            trace: {
+              title: 'Server work · 10 ms',
+              lines: ['✓ 1. check session     1 ms', '✓ 2. read article      5 ms', '> 3. read author       4 ms', '# 4. read comments     6 ms', '# 5. build HTML        9 ms'],
+            },
+          },
+          flows: [{ route: ['wd'], rate: 2.2, bounce: true, once: 1 }],
+          metrics: { server: '40 ms' },
+        },
+        {
+          label: 'Read comments',
+          duration: 2200,
+          entities: {
+            web: { ...CPU(0.15), focus: true },
             db: { focus: true, badge: { text: '3 queries · 15 ms', tone: 'good' } },
             trace: {
               title: 'Server work · 16 ms',
-              lines: ['✓ 1. check session     1 ms', '> 2. read article      5 ms', '> 3. read author       4 ms', '> 4. read comments     6 ms', '# 5. build HTML        9 ms'],
+              lines: ['✓ 1. check session     1 ms', '✓ 2. read article      5 ms', '✓ 3. read author       4 ms', '> 4. read comments     6 ms', '# 5. build HTML        9 ms'],
             },
           },
-          flows: [{ route: ['wd'], rate: 2.2, bounce: true, once: 3 }],
+          links: { wd: { label: 'read comments' } },
+          flows: [{ route: ['wd'], rate: 2.2, bounce: true, once: 1 }],
           metrics: { server: '46 ms' },
         },
         {
           label: 'Build HTML',
           entities: {
             web: { ...CPU(0.2), focus: true },
+            db: { badge: { text: '3 queries · 15 ms', tone: 'good' } },
+            trace: {
+              title: 'Server work · 25 ms',
+              lines: ['✓ 1. check session     1 ms', '✓ 2. read article      5 ms', '✓ 3. read author       4 ms', '✓ 4. read comments     6 ms', '> 5. build HTML        9 ms'],
+            },
           },
           metrics: { server: '55 ms' },
         },
@@ -580,7 +652,7 @@ export const requestLifecycle: Lesson = {
       chapter: 'recap',
       title: 'So where did all the time go?',
       body: [
-        'One click, a few back-and-forth conversations between machines, and one total that adds them all up. Keep this checklist handy next time a page feels slow:',
+        'Everything on this page boils down to <b>addition</b>: DNS + connect + server + download = one total. On the diagram, the cheat sheet and the bar up top are your frame-by-frame ending — pause here when you record.',
         `<table class="compare"><thead><tr><th>step</th><th>typical cost</th><th>slow when…</th><th>see</th></tr></thead><tbody>
           <tr><td>DNS lookup</td><td>20–100 ms cold</td><td>nothing is cached</td><td>this lesson</td></tr>
           <tr><td>TCP + TLS</td><td>2 round trips</td><td>the reader is far away</td><td>CDNs</td></tr>
@@ -589,24 +661,231 @@ export const requestLifecycle: Lesson = {
         'Test yourself: a reader 200 ms away complains, and your server work takes 20 ms. What helps more — a faster database or fewer round trips? (Fewer round trips: just one costs ten times your entire server work — try it in the sliders below!)',
       ],
       callout: { kind: 'insight', text: 'Latency is just addition. List the pieces, spot the biggest number, and shrink that one first.' },
+      metrics: {
+        dns: '40 ms',
+        connect: '60 ms',
+        server: '55 ms',
+        download: '245 ms',
+        total: { v: '400 ms', tone: 'good' },
+      },
+      beats: [
+        {
+          label: 'One click',
+          entities: {
+            browser: { focus: true },
+            far: { focus: false, ghost: true },
+            tips: { ghost: true },
+            cheat: {
+              title: 'Your cheat sheet',
+              lines: [
+                '> 1 click → 4 chunks → 1 total',
+                '# DNS ·········  ···',
+                '# connect ······  ···',
+                '# server ·······  ···',
+                '# download ·····  ···',
+                '# YOU vs FAR → next',
+              ],
+            },
+          },
+          flows: [],
+        },
+        {
+          label: 'DNS',
+          entities: {
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '> DNS ·········  40 ms',
+                '# connect ······  ···',
+                '# server ·······  ···',
+                '# download ·····  ···',
+                '# YOU vs FAR → next',
+              ],
+            },
+          },
+          metrics: { dns: '40 ms', connect: '?', server: '?', download: '?', total: '?' },
+        },
+        {
+          label: 'Connect',
+          entities: {
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '✓ DNS ·········  40 ms',
+                '> connect ······  60 ms',
+                '# server ·······  ···',
+                '# download ·····  ···',
+                '# YOU vs FAR → next',
+              ],
+            },
+          },
+          metrics: { connect: '60 ms' },
+        },
+        {
+          label: 'Server work',
+          entities: {
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '✓ DNS ·········  40 ms',
+                '✓ connect ······  60 ms',
+                '> server ·······  55 ms',
+                '# download ·····  ···',
+                '# YOU vs FAR → next',
+              ],
+            },
+          },
+          metrics: { server: '55 ms' },
+        },
+        {
+          label: 'Download',
+          entities: {
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '✓ DNS ·········  40 ms',
+                '✓ connect ······  60 ms',
+                '✓ server ·······  55 ms',
+                '> download ····· 245 ms',
+                '# YOU vs FAR → next',
+              ],
+            },
+          },
+          metrics: { download: '245 ms', total: '?' },
+        },
+        {
+          label: 'Nearby 400 ms',
+          entities: {
+            browser: { focus: true, badge: { text: '400 ms total', tone: 'good' } },
+            far: { ghost: true },
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '✓ DNS ·········  40 ms',
+                '✓ connect ······  60 ms',
+                '✓ server ·······  55 ms',
+                '✓ download ····· 245 ms',
+                '> YOU nearby ··· 400 ms',
+                '# FAR away → next',
+              ],
+            },
+          },
+          metrics: { total: { v: '400 ms', tone: 'good' } },
+          flows: [{ route: ['bw'], rate: 0.8, bounce: true, once: 2 }],
+        },
+        {
+          label: 'Far ~2 s',
+          entities: {
+            browser: { focus: false },
+            far: { ...FAR, focus: true, ghost: false, badge: { text: '~2.0 s total', tone: 'bad' } },
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '✓ DNS ·········  40 ms',
+                '✓ connect ······  60 ms',
+                '✓ server ·······  55 ms',
+                '✓ download ····· 245 ms',
+                '✓ YOU nearby ··· 400 ms',
+                '> FAR away ·· ~2,000 ms',
+              ],
+            },
+          },
+          flows: [{ route: ['fw'], kind: 'slow', rate: 0.4, bounce: true, once: 2, speed: 45 }],
+        },
+        {
+          label: 'Shrink first',
+          entities: {
+            browser: { focus: true },
+            far: { focus: false, badge: { text: '~2.0 s', tone: 'bad' } },
+            tips: {
+              ghost: false,
+              focus: true,
+              lines: ['> DNS → cache miss', '# connect → far reader', '# server → N+1 queries', '# download → many RTTs'],
+            },
+            cheat: {
+              lines: [
+                '✓ 1 click → 4 chunks → 1 total',
+                '✓ DNS ·········  40 ms',
+                '✓ connect ······  60 ms',
+                '✓ server ·······  55 ms',
+                '✓ download ····· 245 ms',
+                '✓ YOU nearby ··· 400 ms',
+                '! FAR away ·· ~2,000 ms',
+                '> shrink the biggest chunk',
+              ],
+            },
+          },
+        },
+        {
+          label: 'What to fix',
+          entities: {
+            tips: {
+              lines: [
+                '✓ DNS → cache miss',
+                '> connect → far reader',
+                '# server → N+1 queries',
+                '# download → many RTTs',
+              ],
+            },
+          },
+        },
+        {
+          label: 'N+1 queries',
+          entities: {
+            tips: {
+              lines: [
+                '✓ DNS → cache miss',
+                '✓ connect → far reader',
+                '> server → N+1 queries',
+                '# download → many RTTs',
+              ],
+            },
+          },
+        },
+        {
+          label: 'Many RTTs',
+          entities: {
+            tips: {
+              lines: [
+                '✓ DNS → cache miss',
+                '✓ connect → far reader',
+                '✓ server → N+1 queries',
+                '> download → many RTTs',
+              ],
+            },
+          },
+        },
+      ],
       scene: trip({
-        browser: { sub: 'nearby · 30 ms RTT', badge: { text: '400 ms', tone: 'good' } },
-        web: CPU(0.2),
-        request: { label: 'RTT 30 ms' },
-        query: { label: 'read article · 5 ms' },
+        browser: { focus: true, sub: 'nearby · 30 ms RTT', badge: { text: '400 ms total', tone: 'good' } },
+        resolver: { badge: { text: 'saved · 5 min', tone: 'good' } },
+        web: { ...CPU(0.2), badge: { text: '25 ms work', tone: 'good' } },
+        db: { badge: { text: 'healthy', tone: 'good' } },
+        request: { label: '40+60+55+245' },
+        query: { label: 'work vs distance', labelTone: 'info' },
         far: { label: 'RTT 300 ms', labelTone: 'warn' },
         extra: {
           far: { ...FAR, badge: { text: '~2.0 s', tone: 'bad' } },
-          trace: card(30, 23, 'Where time goes', [
-            'total = DNS + TLS + (RTT+work) + dl',
-            '✓ nearby (30 ms RTT):    400 ms',
-            '! far (300 ms RTT):    ~2,000 ms',
-            '> shrink the biggest term first',
+          cheat: card(58, -10, 'Your cheat sheet', [
+            '✓ 1 click → 4 chunks → 1 total',
+            '✓ DNS ·········  40 ms',
+            '✓ connect ······  60 ms',
+            '✓ server ·······  55 ms',
+            '✓ download ····· 245 ms',
+            '✓ YOU nearby ··· 400 ms',
+            '! FAR away ·· ~2,000 ms',
+            '> shrink the biggest chunk',
+          ]),
+          tips: card(12, 22, 'Slow when…', [
+            '✓ DNS → cache miss',
+            '✓ connect → far reader',
+            '✓ server → N+1 queries',
+            '✓ download → many RTTs',
           ]),
         },
         flows: [
-          { route: ['bw', 'wd'], rate: 1, bounce: true },
-          { route: ['fw'], kind: 'slow', rate: 0.5, bounce: true, speed: 45 },
+          { route: ['bw', 'wd'], rate: 0.6, bounce: true },
+          { route: ['fw'], kind: 'slow', rate: 0.35, bounce: true, speed: 45 },
         ],
       }),
     },

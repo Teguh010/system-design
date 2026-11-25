@@ -270,11 +270,12 @@ Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau d
    - Di browser normal, `.beat-card` tampil di pojok kiri bawah panel kanan (tepat di bawah `.learn-card`
      "Yang akan kamu pelajari") agar tidak mengurangi tinggi visualisasi diagram.
    - Tombol **Wide / Lebar** di header atas (atau shortcut `[`) menyembunyikan sidebar kiri kursus,
-     menyembunyikan kartu *Rusak sistemnya* (`ChaosCard`), dan memadatkan timeline *"Di pelajaran ini"*
-     menjadi satu baris pil ringkas agar ruang visualisasi graph maksimal saat screen recording.
-   - Di mode rekam `?record=1`, `.beat-card` ikut disembunyikan dan narator bisa memajukan/memundurkan beat
-     secara manual sesuai tempo bicara lewat keyboard: **`↓` / `.`** (beat berikutnya) dan **`↑` / `,`**
-     (beat sebelumnya), atau **`R`** untuk mengulang dari beat pertama.
+     menyembunyikan kartu *Rusak sistemnya* (`ChaosCard`) dan lab *Coba sendiri* (`LabCard`), serta memadatkan
+     timeline *"Di pelajaran ini"* menjadi satu baris pil ringkas agar ruang visualisasi graph maksimal saat
+     screen recording.
+   - Beat **tidak** auto-advance: pembaca (dan narator) memajukan beat manual lewat tombol/dot di `.beat-card`,
+     **`↓` / `.`** (berikutnya), **`↑` / `,`** (sebelumnya), atau **`R`** (ulang dari beat pertama).
+   - Di mode rekam `?record=1`, `.beat-card` disembunyikan; narator tetap memakai shortcut keyboard yang sama.
 4. **Terjemahan beat (`i18n`):** semua `beat.label`, teks kartu/badge/link di dalam `beats` otomatis diterjemahkan
    lewat `labels` di `LessonOverlay` dan divalidasi oleh `npm run check:i18n` serta `npm run test`.
 

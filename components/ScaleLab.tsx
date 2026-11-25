@@ -277,10 +277,10 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   // Beats: optional micro-animation keyframes inside a single step.
   const beats = current.beats ?? [];
   const lab = labFor(lesson.id, index + 1);
-  const hasBeats = beats.length > 0 && !lab;
+  const showLab = !!lab && !wide;
+  const hasBeats = beats.length > 0;
   const [beatIndex, setBeatIndex] = useState(0);
-  const [beatAuto, setBeatAuto] = useState(true);
-  useEffect(() => { setBeatIndex(0); setBeatAuto(true); }, [index]);
+  useEffect(() => { setBeatIndex(0); }, [index]);
   const resolved = useMemo(() => resolveBeat(current, beatIndex), [current, beatIndex]);
 
   // Lab: metrics follow the sliders live; the diagram follows shortly after so packets keep flowing.
@@ -304,12 +304,6 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     setBroken((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
   }, [current.chaos, wide]);
   const brokenKey = broken.join(',');
-  useEffect(() => {
-    if (!hasBeats || !beatAuto || paused || brokenKey || beatIndex >= beats.length - 1) return;
-    const ms = beats[beatIndex]?.duration ?? 2400;
-    const id = setTimeout(() => setBeatIndex((i) => Math.min(beats.length - 1, i + 1)), ms);
-    return () => clearTimeout(id);
-  }, [hasBeats, beatAuto, paused, brokenKey, beatIndex, beats]);
   const chaosScene = useMemo(() => {
     const baseScene = resolved.scene;
     if (!brokenKey) return baseScene;
@@ -317,8 +311,14 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     return { ...baseScene, entities: Object.fromEntries(Object.entries(baseScene.entities).map(([id, e]) => [id, ids.includes(id) ? { ...e, down: true } : e])) };
   }, [resolved.scene, brokenKey]);
 
-  const stageScene = labScene ?? chaosScene;
-  const shownValues: Record<string, MetricValue> = Object.assign({}, values, resolved.metrics, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
+  const stageScene = hasBeats ? chaosScene : ((showLab ? labScene : null) ?? chaosScene);
+  const shownValues: Record<string, MetricValue> = Object.assign(
+    {},
+    values,
+    resolved.metrics,
+    ...(showLab && labResult ? [labResult.metrics] : []),
+    ...broken.map((id) => current.chaos?.[id]?.metrics),
+  );
   useEffect(() => setActiveStep(step), [step]);
   useEffect(() => {
     const onPopState = () => {
@@ -350,14 +350,10 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     const next = !instance.isPaused;
     instance.setPaused(next);
     setPaused(next);
-    if (!next && hasBeats) {
-      if (beatIndex >= beats.length - 1) setBeatIndex(0);
-      setBeatAuto(true);
-    }
+    if (!next && hasBeats && beatIndex >= beats.length - 1) setBeatIndex(0);
   }, [hasBeats, beatIndex, beats.length]);
   const replay = useCallback(() => {
     setBeatIndex(0);
-    setBeatAuto(true);
     if (stage.current?.isPaused) {
       stage.current.setPaused(false);
       setPaused(false);
@@ -366,7 +362,6 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   }, []);
   const stepBeat = useCallback((delta: number) => {
     if (!hasBeats) return;
-    setBeatAuto(false);
     setBeatIndex((i) => Math.max(0, Math.min(beats.length - 1, i + delta)));
   }, [hasBeats, beats.length]);
   useEffect(() => {
@@ -400,7 +395,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     return () => document.removeEventListener('keydown', onKey);
   }, [nav, togglePause, replay, stepBeat, hasBeats, onToggleSidebar]);
   return <GlossaryScope locale={locale} className="lesson">
-    <section className={`center${lab || canBreak ? ' has-play' : ''}`}>
+    <section className={`center${showLab || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
         <div className="l-title-row"><h1>{lesson.title}</h1><div className="pills"><span className="pill-chip p-time">◷ {t('lesson.min', { n: lesson.minutes })}</span><span className="pill-chip p-level">▮ {t(`level.${lesson.level}`)}</span><span className="pill-chip p-steps">☰ {t('lesson.steps', { n })}</span></div></div><p className="l-summary"><GlossaryPlain text={lesson.summary} /></p>
       </header>
@@ -412,7 +407,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
         const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
         return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
       })}</div><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
-      {lab && labResult && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
+      {showLab && labResult && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
       {canBreak && <ChaosCard step={current} broken={broken} onToggle={toggleBroken} onRepair={() => setBroken([])} />}
       <div className="timeline-card"><div className="tl-head"><span>{t('lesson.timeline')}</span><span className="tl-count">{t('lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
     </section>
@@ -445,7 +440,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
           <div className="beat-controls">
             <button className="beat-nav" type="button" disabled={beatIndex === 0} aria-label={t('stage.prevBeat')} title="↑ / ," onClick={() => stepBeat(-1)}>‹</button>
             <div className="beat-dots">{beats.map((b, i) => (
-              <button key={i} type="button" className={`beat-dot${i === beatIndex ? ' is-active' : i < beatIndex ? ' is-done' : ''}`} aria-current={i === beatIndex ? 'step' : undefined} title={b.label ?? String(i + 1)} onClick={() => { setBeatAuto(false); setBeatIndex(i); }}>{i + 1}</button>
+              <button key={i} type="button" className={`beat-dot${i === beatIndex ? ' is-active' : i < beatIndex ? ' is-done' : ''}`} aria-current={i === beatIndex ? 'step' : undefined} title={b.label ?? String(i + 1)} onClick={() => setBeatIndex(i)}>{i + 1}</button>
             ))}</div>
             <button className="beat-nav" type="button" disabled={beatIndex >= beats.length - 1} aria-label={t('stage.nextBeat')} title="↓ / ." onClick={() => stepBeat(1)}>›</button>
           </div>

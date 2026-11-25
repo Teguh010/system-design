@@ -23,7 +23,8 @@ test('the lab formats numbers per locale and names the biggest term', () => {
   assert.equal(text(id.metrics.total), '~2,0 dtk');
   assert.match(en.note, /download/);
   assert.equal(en.scene.entities.far, undefined);
-  assert.equal(en.scene.entities.trace?.kind, 'card');
-  assert.ok(en.scene.entities.trace?.lines?.some((l) => l.includes('~2.0 s')));
-  assert.ok(id.scene.entities.trace?.lines?.some((l) => l.includes('~2,0 dtk')));
+  assert.equal(en.scene.entities.live?.kind, 'card');
+  assert.ok(en.scene.entities.live?.lines?.some((l) => l.includes('~2.0 s')));
+  assert.ok(id.scene.entities.live?.lines?.some((l) => l.includes('~2,0 dtk')));
+  assert.equal(en.scene.entities.cheat?.kind, 'card');
 });

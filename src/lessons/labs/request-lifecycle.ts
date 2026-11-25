@@ -100,7 +100,7 @@ export const requestLifecycleLab: Lab = {
           badge: { text: `${locale === 'id' ? 'kerja' : 'work'} ${work} ms`, tone: workTone },
         },
       }),
-      trace: card(
+      live: card(
         24,
         22,
         locale === 'id' ? 'Ke mana waktunya habis (live)' : 'Where time goes (live)',
