@@ -68,11 +68,7 @@ const overlay: LessonOverlay = {
       ],
       callout: 'Round-trip time (RTT) adalah satuan latency di jaringan. Hitung jumlah round trip-nya, lalu kalikan.',
       changes: ['+ jawaban DNS di-cache selama 5 menit', '+ handshake TCP + TLS: 2 round trip @ 30 ms'],
-      predict: {
-        question: 'Server-nya berjarak 30 ms (satu round trip). Sebelum browser bisa mengirim request, ia harus membuka koneksi yang aman. Berapa lama itu?',
-        options: ['Hampir nol — cuma beberapa pesan kecil', '30 ms — satu round trip', '60 ms — dua round trip', '300 ms — enkripsi itu lambat'],
-        explain: 'TCP butuh satu round trip dan TLS 1.3 satu lagi. Pesannya kecil, jadi bandwidth tidak berpengaruh: masing-masing menunggu satu round trip penuh.',
-      },
+
     },
     {
       short: 'Request',
@@ -125,11 +121,7 @@ const overlay: LessonOverlay = {
       ],
       callout: 'Ukur dulu sebelum mengoptimalkan. Kalau jaringan baik-baik saja tapi kolom server membengkak, hitung query-nya sebelum membeli hardware.',
       changes: ['+ komentar mencari setiap penulis terpisah: 40 query tambahan', '~ CPU server turun — ia menunggu, bukan bekerja'],
-      predict: {
-        question: 'Artikel populer sekarang menjalankan 40 query database tambahan, satu per penulis komentar. Apa yang terjadi pada CPU web server?',
-        options: ['Naik mendekati 100%', 'Kurang lebih tetap', 'Turun — server lebih banyak menunggu'],
-        explain: 'Setiap query adalah satu round trip ke database. Selama menunggu jawaban, CPU tidak banyak bekerja, jadi halamannya makin lambat sementara server terlihat santai.',
-      },
+
     },
     {
       short: 'Jauh',
@@ -140,11 +132,7 @@ const overlay: LessonOverlay = {
       ],
       callout: 'Latency punya dua sumber besar: kerja di server dan jarak di jaringan. Keduanya butuh solusi yang berbeda.',
       changes: ['+ pembaca dengan round trip 300 ms', '~ N+1 sudah diperbaiki: kerja server kembali normal', '~ setiap round trip 10× lebih mahal'],
-      predict: {
-        question: 'Anggap masalah N+1 sudah diperbaiki. Pembaca di benua lain punya round trip 300 ms, bukan 30 ms. Kira-kira kapan halamannya selesai?',
-        options: ['~0,4 dtk, sama seperti yang lain', '~0,7 dtk', '~2 dtk', '~10 dtk'],
-        explain: 'Kerja server tidak berubah, tapi setiap round trip sepuluh kali lebih lama: DNS, dua handshake, request, dan beberapa putaran file berjumlah sekitar 2 detik.',
-      },
+
     },
     {
       short: 'Rangkuman',

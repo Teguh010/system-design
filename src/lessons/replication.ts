@@ -134,12 +134,7 @@ export const replication: Lesson = {
         'The first scaling move: keep the <b>leader</b> for writes, add a <b>follower</b> (Postgres calls it a read replica) that tails the WAL and answers read-only queries. Shelfmark routes feed and search to the follower.',
         'The API fleet needs two pools: leader endpoint for mutations, follower endpoint for read-mostly traffic.',
       ],
-      predict: {
-        question: 'You move ~70% of reads to a new replica. What should happen to read I/O on the primary?',
-        options: ['Stays pegged at 100%', 'Drops sharply', 'Doubles — replication counts as reads', 'Hits zero — primary idles'],
-        answer: 1,
-        explain: 'Offloaded SELECTs no longer touch the primary disk. Replication stream is sequential WAL, not the same as millions of random feed queries.',
-      },
+
       changes: ['+ follower (warm copy)', '~ feeds can hit follower'],
       metrics: { reads: { v: '~30%', tone: 'good' } },
       scene: shelf({
@@ -229,12 +224,7 @@ export const replication: Lesson = {
         'For balance and billing rows, Shelfmark enables <b>synchronous</b> replication: the leader waits until at least one follower acknowledges before confirming the write. Lag nears zero; every commit pays for a round trip.',
         'Most teams stay async by default and enable sync only where stale reads are unacceptable.',
       ],
-      predict: {
-        question: 'You switch critical writes to synchronous replication. Which number usually rises first?',
-        options: ['Read I/O on the primary', 'Replication lag', 'Write latency (p95)', 'Feed hit rate'],
-        answer: 2,
-        explain: 'The leader must wait for the replica before replying. Reads and lag improve; commits get slower — that is the trade you are buying.',
-      },
+
       changes: ['~ leader waits for follower ack', '~ write p95 +3 ms (illustrative)'],
       metrics: { lag: { v: '~0 ms', tone: 'good' } },
       scene: shelf({

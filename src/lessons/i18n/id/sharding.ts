@@ -130,11 +130,7 @@ const overlay: LessonOverlay = {
         'Router beralih ke <b>hash</b>: <code>shard = hash(user_id) % N</code>. User studio tersebar; rate insert merata. Kamu kehilangan scan range rapi kecuali query tiap shard.',
         'Consistent hashing (lesson berikutnya) meredakan sakit saat <code>N</code> berubah. Untuk sekarang, modulo hashing adalah baseline sederhana.',
       ],
-      predict: {
-        question: 'Kamu pindah dari range ke hash(user_id) % 3. Apa yang terjadi pada beban studio yang terkonsentrasi?',
-        options: ['Semua trafik tetap di shard 0', 'Beban tersebar ke shard', 'Tulis turun ke nol', 'Setiap query kena 3 shard'],
-        explain: 'Hash menyebarkan user_id secara pseudo-acak. Lookup titik masih satu shard; hanya scatter query yang butuh semua shard.',
-      },
+
       changes: ['~ router: hash % 3', '~ beban hot shard diratakan'],
     },
     {
@@ -153,11 +149,7 @@ const overlay: LessonOverlay = {
         'Disk naik lagi. Ops ingin <b>shard keempat</b>. Dengan <code>hash % 3</code>, hampir setiap baris harus pindah saat ganti ke <code>% 4</code> — migrasi panjang dengan dual-write atau job backfill.',
         '<b>Resharding</b> bukan toggle akhir pekan. Framebag merencanakan seperti rilis: config router baru, salin data, verifikasi hitungan, cutover, shard lama read-only sampai TTL habis.',
       ],
-      predict: {
-        question: 'Kamu gandakan jumlah shard dari 3 ke 6 dengan modulo biasa. Biaya migrasi biasanya?',
-        options: ['Tidak ada baris pindah — hanya tulis baru', 'Kebanyakan baris butuh rumah baru', 'Hanya hot shard pindah', 'Baca stop; tulis jalan'],
-        explain: 'Modulo memetakan ulang saat N berubah. Itu sebabnya ada consistent hashing — tapi resharding tetap kerja ops yang disengaja.',
-      },
+
       changes: ['+ shard 3 (rencana)', '~ remap hash % N → % (N+1)'],
     },
     {

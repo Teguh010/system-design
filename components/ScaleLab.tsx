@@ -10,7 +10,7 @@ import { LOCALES, type Locale } from '../src/i18n';
 import { getPathname } from '../src/i18n/navigation';
 import { lb, link, server, spread, users } from '../src/lessons/helpers';
 import { labFor, type Lab } from '../src/lessons/labs';
-import type { Lesson, MetricValue, Predict, Scene, Step } from '../src/types';
+import type { Lesson, MetricValue, Scene, Step } from '../src/types';
 import { currentTheme, load, markVisited, save, setLastStep, setTheme } from '../src/ui/store';
 import { GlossaryHtml, GlossaryPlain, GlossaryScope } from './Glossary';
 
@@ -135,14 +135,11 @@ function valuesAt(lesson: Lesson, i: number): Record<string, MetricValue> {
 
 /** `?record=1` hides everything but the title, metrics and diagram, for screen recording. */
 function useRecordMode() {
-  const [record, setRecord] = useState(false);
   useEffect(() => {
     const on = new URLSearchParams(window.location.search).get('record') === '1';
-    setRecord(on);
     document.documentElement.classList.toggle('is-record', on);
     return () => document.documentElement.classList.remove('is-record');
   }, []);
-  return record;
 }
 
 type Num = { pre: string; n: number; dec: number; grouped: boolean; post: string };
@@ -224,37 +221,6 @@ function Changes({ lesson, index }: { lesson: Lesson; index: number }) {
   return <div className="changes"><h3>{t('step.changed')}</h3><ul>{rows.map(([sign, content], j) => <li key={j} className={`ch-${sign === '+' ? 'add' : sign === '-' ? 'remove' : 'change'}`}><i aria-hidden="true">{sign === '-' ? '−' : sign}</i><span><GlossaryPlain text={content} /></span></li>)}</ul></div>;
 }
 
-const kbd = (chunks: React.ReactNode) => <kbd>{chunks}</kbd>;
-
-function PredictCard({ predict, onChoose, onSkip }: { predict: Predict; onChoose: (i: number) => void; onSkip: () => void }) {
-  const t = useTranslations();
-  return <div className="predict">
-    <span className="predict-tag">{t('predict.label')}</span>
-    <p className="predict-q"><GlossaryPlain text={predict.question} /></p>
-    <ol className="predict-opts">{predict.options.map((o, i) => <li key={i}>
-      <button type="button" className="predict-opt" onClick={() => onChoose(i)}><kbd>{i + 1}</kbd><span><GlossaryPlain text={o} /></span></button>
-    </li>)}</ol>
-    <div className="predict-foot">
-      <span className="keys">{t.rich('predict.keys', { n: predict.options.length, kbd })}</span>
-      <button type="button" className="btn small" onClick={onSkip}>{t('predict.skip')}</button>
-    </div>
-  </div>;
-}
-
-function PredictResult({ predict, choice }: { predict: Predict; choice: number | undefined }) {
-  const t = useTranslations();
-  const correct = choice === predict.answer;
-  const answer = predict.options[predict.answer]!;
-  return <div className={`predict-result ${choice === undefined ? 'is-skipped' : correct ? 'is-correct' : 'is-wrong'}`}>
-    <p className="pr-verdict">
-      {choice !== undefined && <b>{correct ? t('predict.correct') : t('predict.wrong')}</b>}
-      {!correct && <span>{t('predict.answer', { answer })}</span>}
-    </p>
-    {choice !== undefined && !correct && <p className="pr-yours">{t('predict.yours', { choice: predict.options[choice] ?? '' })}</p>}
-    <p className="pr-explain"><GlossaryHtml html={predict.explain} /></p>
-  </div>;
-}
-
 function LabCard({ lab, locale, values, note, onChange, onReset }: {
   lab: Lab; locale: Locale; values: Record<string, number>; note: string;
   onChange: (id: string, v: number) => void; onReset: () => void;
@@ -289,12 +255,6 @@ function ChaosCard({ step, broken, onToggle, onRepair }: { step: Step; broken: s
   </div>;
 }
 
-const readAnswers = (lessonId: string) => load<Record<string, Record<string, number>>>('predict', {})[lessonId] ?? {};
-function saveAnswer(lessonId: string, index: number, choice: number) {
-  const all = load<Record<string, Record<string, number>>>('predict', {});
-  save('predict', { ...all, [lessonId]: { ...all[lessonId], [index]: choice } });
-}
-
 function LessonScreen({ lesson, place, locale, step, progress, onProgress, onStepNavigation }: {
   lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; onProgress: () => void; onStepNavigation: () => void;
 }) {
@@ -304,7 +264,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const timeline = useRef<HTMLOListElement>(null);
   const firstStep = useRef(true);
   const stepCard = useRef<HTMLDivElement>(null);
-  const record = useRecordMode();
+  useRecordMode();
   const [paused, setPaused] = useState(false);
   const [activeStep, setActiveStep] = useState(step);
   const index = Math.max(0, Math.min(lesson.steps.length - 1, Number.isFinite(activeStep) ? Math.trunc(activeStep) - 1 : 0));
@@ -312,19 +272,6 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const n = lesson.steps.length;
   const seen = seenFor(progress, lesson.id);
   const values = valuesAt(lesson, index);
-
-  // Predict: answers come from storage after mount, so the first render always asks.
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [skipped, setSkipped] = useState<Set<number>>(() => new Set());
-  useEffect(() => setAnswers(readAnswers(lesson.id)), [lesson.id]);
-  const choice = answers[index];
-  // While recording, one arrow press is one step: the predict question never holds a step back.
-  const pending = !record && !!current.predict && choice === undefined && !skipped.has(index);
-  const choose = useCallback((i: number) => {
-    saveAnswer(lesson.id, index, i);
-    setAnswers((a) => ({ ...a, [index]: i }));
-  }, [lesson.id, index]);
-  const skip = useCallback(() => setSkipped((s) => new Set(s).add(index)), [index]);
 
   // Lab: metrics follow the sliders live; the diagram follows shortly after so packets keep flowing.
   const lab = labFor(lesson.id, index + 1);
@@ -342,7 +289,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   // Chaos: entities the reader has broken on this step, in the order they were broken.
   const [broken, setBroken] = useState<string[]>([]);
   useEffect(() => setBroken([]), [index]);
-  const canBreak = !pending && !!current.chaos;
+  const canBreak = !!current.chaos;
   const toggleBroken = useCallback((id: string) => {
     if (!current.chaos?.[id]) return;
     setBroken((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
@@ -354,10 +301,8 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     return { ...current.scene, entities: Object.fromEntries(Object.entries(current.scene.entities).map(([id, e]) => [id, ids.includes(id) ? { ...e, down: true } : e])) };
   }, [current.scene, brokenKey]);
 
-  const stageScene = pending ? (lesson.steps[index - 1]?.scene ?? current.scene) : (labScene ?? chaosScene);
-  const shownValues: Record<string, MetricValue> = pending
-    ? valuesAt(lesson, Math.max(0, index - 1))
-    : Object.assign({}, values, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
+  const stageScene = labScene ?? chaosScene;
+  const shownValues: Record<string, MetricValue> = Object.assign({}, values, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
   useEffect(() => setActiveStep(step), [step]);
   useEffect(() => {
     const onPopState = () => {
@@ -379,11 +324,10 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     goToStep(next);
   };
   const nav = useCallback((delta: number) => {
-    if (delta > 0 && pending) return skip();
     const next = index + delta;
     if (next >= n) router.push(homePath(locale));
     else if (next >= 0) goToStep(next + 1);
-  }, [index, n, router, locale, goToStep, pending, skip]);
+  }, [index, n, router, locale, goToStep]);
   const togglePause = useCallback(() => {
     const instance = stage.current;
     if (!instance) return;
@@ -407,9 +351,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
       const target = ev.target;
       if (ev.metaKey || ev.ctrlKey || ev.altKey || (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))) return;
       const key = ev.key.toLowerCase();
-      const option = pending && current.predict && /^[1-9]$/.test(key) ? Number(key) - 1 : -1;
-      if (option >= 0 && option < (current.predict?.options.length ?? 0)) choose(option);
-      else if (key === 'arrowright' || key === 'pagedown') nav(1);
+      if (key === 'arrowright' || key === 'pagedown') nav(1);
       else if (key === 'arrowleft' || key === 'pageup') nav(-1);
       else if (key === ' ') togglePause();
       else if (key === 'r') stage.current?.replay();
@@ -419,9 +361,9 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [nav, togglePause, pending, current.predict, choose]);
+  }, [nav, togglePause]);
   return <GlossaryScope locale={locale} className="lesson">
-    <section className={`center${(lab && !pending) || canBreak ? ' has-play' : ''}`}>
+    <section className={`center${lab || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
         <div className="l-title-row"><h1>{lesson.title}</h1><div className="pills"><span className="pill-chip p-time">◷ {t('lesson.min', { n: lesson.minutes })}</span><span className="pill-chip p-level">▮ {t(`level.${lesson.level}`)}</span><span className="pill-chip p-steps">☰ {t('lesson.steps', { n })}</span></div></div><p className="l-summary"><GlossaryPlain text={lesson.summary} /></p>
       </header>
@@ -432,15 +374,13 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
         const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
         return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
       })}</div><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
-      {lab && labResult && !pending && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
+      {lab && labResult && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
       {canBreak && <ChaosCard step={current} broken={broken} onToggle={toggleBroken} onRepair={() => setBroken([])} />}
       <div className="timeline-card"><div className="tl-head"><span>{t('lesson.timeline')}</span><span className="tl-count">{t('lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
     </section>
     <aside className="side"><div className="step-card" ref={stepCard}><div className="step-top"><span className="step-no">{t('step.label', { i: index + 1, n })}</span><span className={`chip ch-${current.chapter}`}>{t(`chapter.${current.chapter}`)}</span></div>
-      <article className="step enter" aria-live="polite" key={`${index}${pending ? '-ask' : ''}`}><h2><GlossaryPlain text={current.title} /></h2>
-        {pending && current.predict && <PredictCard predict={current.predict} onChoose={choose} onSkip={skip} />}
-        <div className="step-body" hidden={pending}>
-          {!pending && current.predict && <PredictResult predict={current.predict} choice={choice} />}
+      <article className="step enter" aria-live="polite" key={index}><h2><GlossaryPlain text={current.title} /></h2>
+        <div className="step-body">
           {current.body.map((p, i) =>
             p.trimStart().startsWith('<table')
               ? <div key={i}><GlossaryHtml html={p} /></div>
@@ -452,7 +392,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
               <span><GlossaryHtml html={current.callout.text} /></span>
             </aside>
           )}
-          {!pending && <Changes lesson={lesson} index={index} />}
+          <Changes lesson={lesson} index={index} />
         </div>
       </article>
       <nav className="step-nav"><button className="btn prev" type="button" disabled={index === 0} onClick={() => nav(-1)}>← {t('step.back')}</button><button className="btn primary next" type="button" onClick={() => nav(1)}>{lesson.steps[index + 1] ? `${t('step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${t('step.finish')} ✓`}</button></nav>

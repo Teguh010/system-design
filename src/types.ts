@@ -87,19 +87,6 @@ export type Chapter = 'setup' | 'problem' | 'technique' | 'solution' | 'tradeoff
 
 export type MetricValue = string | { v: string; tone: Tone };
 
-/**
- * A question asked before the step is revealed. While unanswered, the stage keeps showing the
- * previous step, so the reader commits to a guess before seeing the outcome.
- */
-export interface Predict {
-  question: string;
-  options: string[];
-  /** Index into `options`. */
-  answer: number;
-  /** Trusted HTML shown after answering. */
-  explain: string;
-}
-
 /** What happens when the reader breaks one entity on this step. */
 export interface ChaosEffect {
   /** Trusted HTML. */
@@ -122,7 +109,6 @@ export interface Step {
    * Metric changes are listed automatically.
    */
   changes?: string[];
-  predict?: Predict;
   /** Entities the reader may break on this step, keyed by entity id. */
   chaos?: Record<string, ChaosEffect>;
   scene: Scene;
@@ -157,7 +143,6 @@ export interface LessonOverlay {
     body?: string[];
     callout?: string;
     changes?: string[];
-    predict?: { question?: string; options?: string[]; explain?: string };
     /** Chaos texts keyed by entity id. */
     chaos?: Record<string, string>;
   } | null)[];

@@ -174,12 +174,7 @@ export const sharding: Lesson = {
         'Switch the router to <b>hash sharding</b>: <code>shard = hash(user_id) % N</code>. The studio’s users scatter across shards; insert rates even out. You lose neat range scans on user ID unless you query every shard.',
         'Consistent hashing (next lesson) softens the pain when <code>N</code> changes. For now, modulo hashing is the simple baseline.',
       ],
-      predict: {
-        question: 'You move from range to hash(user_id) % 3. What happens to the studio’s concentrated load?',
-        options: ['All traffic stays on shard 0', 'Load spreads across shards', 'Writes drop to zero', 'Every query hits all 3 shards'],
-        answer: 1,
-        explain: 'Hashing spreads unrelated user_ids pseudo-randomly. Point lookups still hit one shard; only scatter queries need every shard.',
-      },
+
       changes: ['~ router: hash % 3', '~ hot shard load flattened'],
       metrics: { writes: { v: '~4k/s each', tone: 'good' }, disk: { v: 'balanced', tone: 'good' } },
       scene: ledger({
@@ -227,12 +222,7 @@ export const sharding: Lesson = {
         'Disk is climbing again. Ops want a <b>fourth shard</b>. With <code>hash % 3</code>, almost every row must move when you switch to <code>% 4</code> — a long migration with dual-write or backfill jobs.',
         '<b>Resharding</b> is not a weekend toggle. Framebag plans it like a release: new router config, copy data, verify counts, cut over, keep the old shards read-only until TTL passes.',
       ],
-      predict: {
-        question: 'You double shard count from 3 to 6 with plain modulo hashing. What is the usual migration cost?',
-        options: ['No rows move — only new writes change', 'Most rows may need a new home', 'Only the hot shard moves', 'Reads stop; writes continue'],
-        answer: 1,
-        explain: 'Modulo remaps keys when N changes. That is why consistent hashing exists — but even then, resharding is deliberate ops work.',
-      },
+
       changes: ['+ shard 3 (planned)', '~ remap hash % N → % (N+1)'],
       metrics: { shards: { v: '3 → 4', tone: 'warn' }, scatter: 'same' },
       scene: ledger({

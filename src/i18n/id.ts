@@ -50,15 +50,6 @@ const id = {
     tradeoff: 'trade-off', insight: 'wawasan', recap: 'rangkuman',
   },
   callout: { insight: 'Ide kunci', tip: 'Tips', warning: 'Hati-hati' },
-  predict: {
-    label: 'Tebak dulu',
-    skip: 'Lewati — langsung tunjukkan',
-    correct: 'Benar!',
-    wrong: 'Belum tepat.',
-    answer: 'Jawabannya: {answer}',
-    yours: 'Tebakanmu: {choice}',
-    keys: 'Tekan <kbd>1</kbd>–<kbd>{n}</kbd> untuk menjawab',
-  },
   lab: { reset: 'Reset' },
   chaos: {
     hint: 'klik sebuah komponen untuk merusaknya',

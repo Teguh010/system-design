@@ -74,8 +74,6 @@ already fits). Metrics not set on a step carry over from earlier steps.
 
 ### Interactive steps
 
-- `predict` asks a question before the step is revealed; the stage keeps showing the previous step until
-  the reader answers or skips. Answers are saved in `localStorage`.
 - `chaos` lists entities the reader can break by clicking them; packets that reach a broken entity fail, and
   the step's metrics can be overridden.
 - Labs (`src/lessons/labs/`) add sliders whose formula recomputes metrics and the scene. They are code, so they

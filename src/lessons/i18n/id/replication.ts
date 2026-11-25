@@ -88,11 +88,7 @@ const overlay: LessonOverlay = {
         'Langkah skala pertama: pertahankan <b>leader</b> untuk tulis, tambah <b>follower</b> (Postgres menyebutnya read replica) yang mengikuti WAL dan menjawab query read-only. Shelfmark mengarahkan feed dan pencarian ke follower.',
         'Armada API butuh dua pool: endpoint leader untuk mutasi, endpoint follower untuk trafik read-mostly.',
       ],
-      predict: {
-        question: 'Kamu memindahkan ~70% baca ke replica baru. Apa yang terjadi pada I/O baca di primary?',
-        options: ['Tetap 100%', 'Turun tajam', 'Dobel — replikasi dihitung baca', 'Nol — primary menganggur'],
-        explain: 'SELECT yang dipindah tidak lagi menyentuh disk primary. Aliran replikasi WAL berurutan, bukan jutaan query feed acak.',
-      },
+
       changes: ['+ follower (salinan hangat)', '~ feed bisa ke follower'],
     },
     {
@@ -137,11 +133,7 @@ const overlay: LessonOverlay = {
         'Untuk saldo dan tagihan, Shelfmark mengaktifkan replikasi <b>sinkron</b>: leader menunggu minimal satu follower mengakui sebelum mengonfirmasi tulis. Lag mendekati nol; setiap commit membayar round trip.',
         'Kebanyakan tim default async dan sync hanya di mana baca basi tidak bisa diterima.',
       ],
-      predict: {
-        question: 'Kamu mengalihkan tulis kritis ke replikasi sinkron. Angka mana yang biasanya naik dulu?',
-        options: ['I/O baca di primary', 'Replication lag', 'Latency tulis (p95)', 'Hit rate feed'],
-        explain: 'Leader harus menunggu replica sebelum membalas. Baca dan lag membaik; commit melambat — itu trade-off yang dibeli.',
-      },
+
       changes: ['~ leader menunggu ack follower', '~ p95 tulis +3 ms (ilustratif)'],
     },
     {
