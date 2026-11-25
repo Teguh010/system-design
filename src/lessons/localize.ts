@@ -1,5 +1,5 @@
 import type { Locale } from '../i18n/index.ts';
-import type { Entity, Lesson, LessonOverlay, MetricValue, Scene } from '../types.ts';
+import type { Entity, Lesson, LessonOverlay, MetricValue, Scene, SceneBeat } from '../types.ts';
 
 const overlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
   'id/request-lifecycle': () => import('./i18n/id/request-lifecycle.ts'),
@@ -28,8 +28,8 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
     return m ? m[1] + (tr(s.slice(2)) ?? '') : (tr(s) ?? s);
   };
   const metric = (v: MetricValue): MetricValue => (typeof v === 'string' ? tr(v)! : { ...v, v: tr(v.v)! });
-  const entity = (e: Entity): Entity => {
-    const out: Entity = { ...e };
+  const entity = <T extends Partial<Entity>>(e: T): T => {
+    const out: T = { ...e };
     if (e.label !== undefined) out.label = tr(e.label)!;
     if (e.sub !== undefined) out.sub = tr(e.sub)!;
     if (e.title !== undefined) out.title = tr(e.title)!;
@@ -42,6 +42,17 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
     ...s,
     entities: Object.fromEntries(Object.entries(s.entities).map(([k, e]) => [k, entity(e)])),
     ...(s.links && { links: Object.fromEntries(Object.entries(s.links).map(([k, l]) => [k, l.label ? { ...l, label: tr(l.label)! } : l])) }),
+  });
+  const beat = (b: SceneBeat): SceneBeat => ({
+    ...b,
+    ...(b.label !== undefined && { label: tr(b.label)! }),
+    ...(b.entities && {
+      entities: Object.fromEntries(Object.entries(b.entities).map(([k, e]) => [k, e ? entity(e) : null])),
+    }),
+    ...(b.links && {
+      links: Object.fromEntries(Object.entries(b.links).map(([k, l]) => [k, l ? (l.label ? { ...l, label: tr(l.label)! } : l) : null])),
+    }),
+    ...(b.metrics && { metrics: Object.fromEntries(Object.entries(b.metrics).map(([k, v]) => [k, metric(v)])) }),
   });
 
   return {
@@ -67,6 +78,7 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
             ...(c.metrics && { metrics: Object.fromEntries(Object.entries(c.metrics).map(([k, v]) => [k, metric(v)])) }),
           }])),
         }),
+        ...(step.beats && { beats: step.beats.map(beat) }),
         scene: scene(step.scene),
       };
     }),

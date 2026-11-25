@@ -75,12 +75,30 @@ export interface Flow {
   fail?: number;
   /** Pixels per second. */
   speed?: number;
+  /** Spawn only this many packets instead of looping continuously. */
+  once?: number;
 }
 
 export interface Scene {
   entities: Record<string, Entity>;
   links?: Record<string, Link>;
   flows?: Flow[];
+}
+
+/** One micro-animation keyframe inside a step, patched over `step.scene`. */
+export interface SceneBeat {
+  /** Short label shown in the beat bar (e.g. 'browser cache'). */
+  label?: string;
+  /** Auto-advance delay in ms (default 2400). */
+  duration?: number;
+  /** Shallow overrides merged onto `step.scene.entities` (`null` hides the entity for this beat). */
+  entities?: Record<string, Partial<Entity> | null>;
+  /** Shallow overrides merged onto `step.scene.links` (`null` hides the link for this beat). */
+  links?: Record<string, Partial<Link> | null>;
+  /** Flows for this beat (replaces `step.scene.flows` when provided). */
+  flows?: Flow[];
+  /** Metric overrides for this beat (carried across earlier beats in the same step). */
+  metrics?: Record<string, MetricValue>;
 }
 
 export type Chapter = 'setup' | 'problem' | 'technique' | 'solution' | 'tradeoff' | 'insight' | 'recap';
@@ -111,6 +129,8 @@ export interface Step {
   changes?: string[];
   /** Entities the reader may break on this step, keyed by entity id. */
   chaos?: Record<string, ChaosEffect>;
+  /** Optional sequence of micro-animation keyframes inside this step. */
+  beats?: SceneBeat[];
   scene: Scene;
 }
 

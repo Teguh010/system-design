@@ -7,12 +7,17 @@ test('every packet colour on stage is in the legend, and the legend lists nothin
   for (const { lesson } of allLessons) {
     if (!lesson?.steps.length) continue;
     const used = new Set<PacketKind>();
-    for (const step of lesson.steps)
-      for (const f of step.scene.flows ?? []) {
+    for (const step of lesson.steps) {
+      const flows = [
+        ...(step.scene.flows ?? []),
+        ...(step.beats ?? []).flatMap((b) => b.flows ?? []),
+      ];
+      for (const f of flows) {
         used.add(f.kind ?? 'req');
         if (f.bounce) used.add(f.returnKind ?? 'res');
         if (f.fail) used.add('fail');
       }
+    }
     const legend = new Set(lesson.legend.map((l) => (Array.isArray(l) ? l[0] : l)));
     assert.deepEqual([...used].filter((k) => !legend.has(k)), [], `${lesson.id}: packets missing from the legend`);
     assert.deepEqual([...legend].filter((k) => !used.has(k)), [], `${lesson.id}: legend entries never drawn`);

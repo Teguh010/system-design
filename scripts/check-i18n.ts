@@ -28,6 +28,16 @@ for (const entry of allLessons) {
     for (const v of Object.values<any>(s.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
     for (const c of Object.values<any>(s.chaos ?? {}))
       for (const v of Object.values<any>(c.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
+    for (const b of s.beats ?? []) {
+      add(b.label);
+      for (const e of Object.values<any>(b.entities ?? {})) {
+        if (!e) continue;
+        add(e.label); add(e.sub); add(e.title); add(e.badge?.text); add(e.meter?.label);
+        e.lines?.forEach((l: string) => add(/^[!✓#>] /.test(l) ? l.slice(2) : l));
+      }
+      for (const l of Object.values<any>(b.links ?? {})) if (l) add(l.label);
+      for (const v of Object.values<any>(b.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
+    }
   }
   const unused = Object.keys(o.labels ?? {}).filter((k) => !strings.has(k));
   if (o.steps.length !== lesson.steps.length) { problems++; console.log(lesson.id, 'step count', o.steps.length, lesson.steps.length); }

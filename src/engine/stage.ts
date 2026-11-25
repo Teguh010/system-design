@@ -104,7 +104,7 @@ export class Stage {
   private ents = new Map<string, LiveEnt>();
   private links = new Map<string, LiveLink>();
   private packets: Packet[] = [];
-  private flows: { flow: Flow; acc: number }[] = [];
+  private flows: { flow: Flow; acc: number; sent: number }[] = [];
   private scene: Scene | null = null;
 
   private t0 = 0;
@@ -308,7 +308,7 @@ export class Stage {
 
     this.applyArrows(scene);
     this.clearPackets();
-    this.flows = (scene.flows ?? []).map((flow) => ({ flow, acc: Math.random() }));
+    this.flows = (scene.flows ?? []).map((flow) => ({ flow, acc: flow.once ? 1 : Math.random(), sent: 0 }));
 
     this.t0 = performance.now();
     this.span = this.dur ? this.dur + maxDelay : 0;
@@ -578,30 +578,37 @@ export class Stage {
     for (const t of p.trail) t.setAttribute('class', `pkt-trail pkt-${kind}`);
   }
 
-  private spawn(flow: Flow) {
+  private spawn(flow: Flow): boolean {
     const segs: Seg[] = [];
     for (const id of flow.route) {
       const rev = id.startsWith('~');
       const link = this.links.get(rev ? id.slice(1) : id);
       // No traffic on lines that are still drawing themselves in.
-      if (!link || link.removing || (link.entering && link.o < 0.9)) return;
+      if (!link || link.removing || (link.entering && link.o < 0.9)) return false;
       segs.push({ link, rev });
     }
-    if (!segs.length) return;
+    if (!segs.length) return false;
     const kind = flow.kind ?? 'req';
     const trail = TRAIL.map((_, j) =>
       svg('circle', { r: (3.4 - j * 1).toFixed(1), class: `pkt-trail pkt-${kind}`, opacity: j ? 0.18 : 0.34, cx: -9999, cy: -9999 }, this.layers.packets),
     );
     const el = svg('circle', { r: 4.2, class: `pkt pkt-${kind}`, cx: -9999, cy: -9999 }, this.layers.packets);
     this.packets.push({ flow, kind, segs, i: 0, d: 0, back: false, el, trail });
+    return true;
   }
 
   private stepPackets(dt: number) {
     for (const f of this.flows) {
+      if (f.flow.once !== undefined && f.sent >= f.flow.once) continue;
       f.acc += f.flow.rate * dt;
       while (f.acc >= 1) {
+        if (f.flow.once !== undefined && f.sent >= f.flow.once) break;
+        if (!this.spawn(f.flow)) {
+          f.acc = 1;
+          break;
+        }
         f.acc -= 1;
-        this.spawn(f.flow);
+        f.sent++;
       }
     }
     const done: Packet[] = [];

@@ -66,7 +66,7 @@ npm run check:export # periksa HTML lesson setelah build
 ### Lesson (EN + ID)
 | # | Modul | Lesson | id | Status |
 |---|---|---|---|---|
-| 01 | Foundations | How a Request Travels | `request-lifecycle` | [x] |
+| 01 | Foundations | How a Request Works | `request-lifecycle` | [x] |
 | 01 | Foundations | Latency & Throughput | `latency-throughput` | [x] |
 | 01 | Foundations | Napkin Math | `napkin-math` | [x] |
 | 02 | Scaling | Vertical vs Horizontal Scaling | `vertical-horizontal` | [x] |
@@ -86,12 +86,11 @@ npm run check:export # periksa HTML lesson setelah build
 ### Riwayat revisi penting
 - `replication` pilot **lebih baik dari referensi**: step 1 satu DB tanpa replica, kartu on-call,
   `predict` (step 2 & 6), `chaos` (step 3), metrik `reads on primary`, glosarium stale read / RYW / split brain.
-- `request-lifecycle` jadi **lesson acuan visual (4.1b + 4.1c)**: konteks tetap tampil, label di garis, meter CPU,
-  metrik yang menjumlah ke total, catatan `changes`, serta **kartu runtime `trace`** berposisi konsisten dengan
-  sorotan baris aktif (`> `) untuk memvisualkan proses internal (DNS cache miss chain, TCP+TLS 2 RTT,
-  server runtime stack, TTFB ledger + arah paket satu arah `~bw`, HTTP/2 waterfall, N+1 I/O wait, dan
-  persamaan latency live di lab) agar terbaca mandiri saat mode rekam YouTube (`?record=1`). Lesson lain
-  belum memakai standar penuh ini (lihat 6).
+- `request-lifecycle` jadi **lesson acuan visual (4.1b + 4.1c + 4.1d)**: konteks tetap tampil, label di garis,
+  meter CPU, metrik yang menjumlah ke total, catatan `changes`, **kartu runtime `trace`** dengan sorotan
+  baris aktif (`> `), serta **micro-beats (`step.beats` + `Flow.once`)** agar proses internal bertahap
+  (DNS cache → OS → resolver → TTL, TCP lalu TLS, query DB bertahap, TTFB, gelombang HTTP/2, dan loop N+1)
+  bergerak selaras dengan narasi YouTube (`?record=1`). Lesson lain belum memakai standar penuh ini (lihat 6).
 - `request-lifecycle` ditulis ulang (EN + ID). Sekarang dibuka dengan masalah, tanpa load balancer/CDN,
   dengan case N+1 query dan pembaca jauh, dan recap yang merujuk ke lesson lain.
 - `latency-throughput`: load balancer di step 6–10 diganti satu antrean bersama + 4 worker.
@@ -152,8 +151,9 @@ sebagai contoh paling lengkap).
   Chapter yang tersedia: `setup`, `problem`, `technique`, `solution`, `tradeoff`, `insight`, `recap`.
 - **Satu skenario konkret per lesson** (toko tiket, aplikasi resep, situs PR, dan seterusnya), dengan nama
   dan angka yang konsisten dari awal sampai akhir. Jangan pakai skenario yang sama dengan lesson lain.
-- **`body`: 2 paragraf per step** (3 kalau memang perlu). Kalimat pendek dan konkret. Boleh memakai HTML
-  `<b> <i> <code>`, dan `<table class="compare">` dengan sel `class="good|bad"`.
+- **`body`: 2–3 paragraf pendek per step.** Mengalir seperti naskah narator tutorial YouTube yang santai dan
+  tidak kaku (lihat standar gaya kalimat di 4.1a #8). Boleh memakai HTML `<b> <i> <code>`, dan
+  `<table class="compare">` dengan sel `class="good|bad"`. Jumlah paragraf EN dan ID harus sama persis.
 - **`callout`** (opsional, maksimal satu per step): `insight` / `tip` / `warning`, satu sampai dua kalimat.
 - **Recap:** satu kalimat pengantar → `<table class="compare">` → paragraf
   `Check yourself: … (jawaban singkat dalam kurung.)`
@@ -187,11 +187,18 @@ Periksa setiap lesson baru terhadap daftar berikut:
 7. **Jangan menghindari struktur yang bagus hanya supaya terlihat berbeda.** Urutan alami sebuah topik
    (misalnya DNS → connect → request → server → response) memang sama di mana-mana dan boleh dipakai.
    Keaslian ada di teks, skenario, nama, angka, dan detail case. Semua itu wajib ditulis sendiri.
-8. **Ringkas, membumi, langsung kena poin.** Gunakan kalimat pendek dan bahasa sehari-hari yang mudah
-   dipahami orang awam — tanpa metafora berbelit, tanpa jargon mentah yang menumpuk, dan selalu **ditulis
-   orisinal** (jangan menyalin kalimat dari sumber referensi). Buka step dengan situasi nyata, jelaskan
-   mekanismenya secara lugas dalam 1–2 kalimat per paragraf, dan tutup dengan satu insight tajam. Pastikan
-   istilah glosarium tetap muncul wajar di teks.
+8. **Gaya bahasa narator YouTube yang santai, mengalir, dan tidak kaku (standar wajib semua lesson EN + ID).**
+   Tulis seolah-olah sedang menjelaskan langsung ke penonton di YouTube — hangat, akrab, mudah dicerna orang
+   awam, dan selalu **ditulis orisinal**:
+   - **Bahasa Indonesia (`id`):** pakai gaya obrolan yang natural dan hidup (*"lama banget"*, *"padahal waktu kamu
+     buka..."*, *"nah, kok bisa..."*, *"biar kita tahu..."*, *"kita bakal lihat satu per satu..."*, sapaan
+     *"kamu"* / *"kita"*). Hindari terjemahan kaku/buku teks (*"untuk mengetahui mengapa..."*, *"lacak satu klik..."*).
+   - **Bahasa Inggris (`en`):** pakai gaya narasi lisan yang sama mengalirnya (*"takes forever to load"*,
+     *"So how can..."*, *"let’s follow a single click..."*, *"we’ll watch what happens behind the scenes..."*).
+   - **Ritme antar-paragraf:** buka dengan situasi nyata → selipkan kalimat transisi/pertanyaan pancingan yang
+     bikin penasaran (mis. *"Nah, kok bisa beda sejauh itu?"*) → arahkan mata penonton ke diagram di atasnya.
+   - Istilah glosarium (`DNS`, `TTL`, `TCP`, `TLS`, `RTT`, `TTFB`, `N+1`, dll.) tetap muncul wajar di teks agar
+     tooltip tetap aktif, selalu disertai penjelasan singkat yang membumi.
 
 ### 4.1b Diagram harus bercerita (wajib untuk lesson baru)
 
@@ -248,6 +255,28 @@ harus divisualkan secara presisi di atas stage:
 5. **Sinkronkan kartu runtime dengan Lab (`src/lessons/labs/`).** Bila step memiliki lab slider, perbarui
    kartu `trace` di `compute()` agar persamaan/breakdown ikut bergerak live bersama metrik dan kecepatan paket.
 
+### 4.1d Micro-beats di Dalam Step (`step.beats` & `Flow.once`)
+
+Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau diam membeku saat dinarasikan:
+
+1. **Gunakan `step.beats?: SceneBeat[]`** (`src/types.ts`, diselesaikan lewat `resolveBeat` di `src/lessons/beats.ts`).
+   - Setiap beat menimpa sebagian properti `step.scene` (`entities`, `links`, `flows`, `metrics`, `duration`, `label`)
+     tanpa memecah sidebar/timeline jadi puluhan step.
+   - `step.scene` dan `step.metrics` tetap menyimpan **state akhir yang lengkap** dari step tersebut agar
+     perhitungan metrik step berikutnya, `chaos`, `lab`, dan SSR tetap konsisten.
+2. **Gunakan `Flow.once`** (`once?: number`) untuk alur sekuensial satu kali tembak (misalnya 1× handshake TCP,
+   1× byte pertama TTFB, atau 3× query database), bukan berputar terus-menerus seperti screensaver.
+3. **Kontrol perekaman YouTube (`?record=1` & mode lebar) & pembaca web:**
+   - Di browser normal, `.beat-card` tampil di pojok kiri bawah panel kanan (tepat di bawah `.learn-card`
+     "Yang akan kamu pelajari") agar tidak mengurangi tinggi visualisasi diagram.
+   - Tombol **Wide / Lebar** di header atas (atau shortcut `[`) menyembunyikan sidebar kiri kursus sehingga
+     layar hanya menampilkan visualisasi graph lebar + panel kanan saat screen recording.
+   - Di mode rekam `?record=1`, `.beat-card` ikut disembunyikan dan narator bisa memajukan/memundurkan beat
+     secara manual sesuai tempo bicara lewat keyboard: **`↓` / `.`** (beat berikutnya) dan **`↑` / `,`**
+     (beat sebelumnya), atau **`R`** untuk mengulang dari beat pertama.
+4. **Terjemahan beat (`i18n`):** semua `beat.label`, teks kartu/badge/link di dalam `beats` otomatis diterjemahkan
+   lewat `labels` di `LessonOverlay` dan divalidasi oleh `npm run check:i18n` serta `npm run test`.
+
 ### 4.2 Scene dan layout
 
 - Tulis posisi dengan `at(u, v)` lewat helper: `u` = kanan, `v` = bawah. Jangan pakai `x/y` isometrik mentah.
@@ -286,7 +315,9 @@ harus divisualkan secara presisi di atas stage:
 - Istilah teknis yang lazim tetap dalam bahasa Inggris: cache, load balancer, request, response,
   latency, throughput, shard, replica, queue, worker, deploy, dan sejenisnya.
 - Format angka Indonesia: `1.500`, `0,5 ms`, `dtk`, `mnt`, `jt`, `rb`.
-- Gaya bahasa: santai tapi rapi, sapaan "kamu". Lihat contoh di `src/lessons/i18n/id/`.
+- Gaya bahasa: santai, akrab, dan mengalir seperti narator YouTube (sapaan "kamu"/"kita", transisi natural
+  seperti *"nah"*, *"padahal"*, *"biar kita tahu"*) — bukan bahasa terjemahan kaku. Ikuti standar 4.1a #8 dan
+  lihat contoh terbarunya di `src/lessons/i18n/id/request-lifecycle.ts`.
 - Judul lesson di sidebar juga perlu versi ID di `course.ts` (`ready(lesson, 'Judul ID')`).
 - Jalankan `npm run check:i18n` sampai hasilnya `OK`.
 
@@ -520,7 +551,7 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 | [ ] Design a Chat System | `chat` | WebSocket gateway, presence, urutan pesan, offline delivery, reconnect storm | — |
 
 ### Upgrade visual lesson lama (ke standar 4.1b + 4.1c)
-- [x] `request-lifecycle` (4.1b + 4.1c: kartu runtime `trace`, prefiks aktif `> `, arah respon `~bw`, lab sync)
+- [x] `request-lifecycle` (4.1b + 4.1c + 4.1d: kartu runtime `trace`, prefiks `> `, micro-beats + `Flow.once`, arah respon `~bw`, lab sync)
 - [ ] `latency-throughput` (meter utilisasi di worker, label antrean, kartu runtime antrean M/M/c)
 - [ ] `napkin-math`
 - [ ] `vertical-horizontal` (meter CPU di server, kartu runtime kapasitas)

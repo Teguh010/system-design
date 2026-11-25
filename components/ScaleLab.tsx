@@ -9,6 +9,7 @@ import { Stage } from '../src/engine/stage';
 import { LOCALES, type Locale } from '../src/i18n';
 import { getPathname } from '../src/i18n/navigation';
 import { lb, link, server, spread, users } from '../src/lessons/helpers';
+import { resolveBeat } from '../src/lessons/beats';
 import { labFor, type Lab } from '../src/lessons/labs';
 import type { Lesson, MetricValue, Scene, Step } from '../src/types';
 import { currentTheme, load, markVisited, save, setLastStep, setTheme } from '../src/ui/store';
@@ -255,8 +256,8 @@ function ChaosCard({ step, broken, onToggle, onRepair }: { step: Step; broken: s
   </div>;
 }
 
-function LessonScreen({ lesson, place, locale, step, progress, onProgress, onStepNavigation }: {
-  lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; onProgress: () => void; onStepNavigation: () => void;
+function LessonScreen({ lesson, place, locale, step, progress, onProgress, onStepNavigation, onToggleSidebar }: {
+  lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; onProgress: () => void; onStepNavigation: () => void; onToggleSidebar: () => void;
 }) {
   const t = useTranslations();
   const router = useRouter();
@@ -273,8 +274,16 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const seen = seenFor(progress, lesson.id);
   const values = valuesAt(lesson, index);
 
-  // Lab: metrics follow the sliders live; the diagram follows shortly after so packets keep flowing.
+  // Beats: optional micro-animation keyframes inside a single step.
+  const beats = current.beats ?? [];
   const lab = labFor(lesson.id, index + 1);
+  const hasBeats = beats.length > 0 && !lab;
+  const [beatIndex, setBeatIndex] = useState(0);
+  const [beatAuto, setBeatAuto] = useState(true);
+  useEffect(() => { setBeatIndex(0); setBeatAuto(true); }, [index]);
+  const resolved = useMemo(() => resolveBeat(current, beatIndex), [current, beatIndex]);
+
+  // Lab: metrics follow the sliders live; the diagram follows shortly after so packets keep flowing.
   const defaults = useMemo(() => Object.fromEntries((lab?.controls ?? []).map((c) => [c.id, c.value])), [lab]);
   const [labValues, setLabValues] = useState(defaults);
   const [sceneValues, setSceneValues] = useState(defaults);
@@ -295,14 +304,21 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     setBroken((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
   }, [current.chaos]);
   const brokenKey = broken.join(',');
+  useEffect(() => {
+    if (!hasBeats || !beatAuto || paused || brokenKey || beatIndex >= beats.length - 1) return;
+    const ms = beats[beatIndex]?.duration ?? 2400;
+    const id = setTimeout(() => setBeatIndex((i) => Math.min(beats.length - 1, i + 1)), ms);
+    return () => clearTimeout(id);
+  }, [hasBeats, beatAuto, paused, brokenKey, beatIndex, beats]);
   const chaosScene = useMemo(() => {
-    if (!brokenKey) return current.scene;
+    const baseScene = resolved.scene;
+    if (!brokenKey) return baseScene;
     const ids = brokenKey.split(',');
-    return { ...current.scene, entities: Object.fromEntries(Object.entries(current.scene.entities).map(([id, e]) => [id, ids.includes(id) ? { ...e, down: true } : e])) };
-  }, [current.scene, brokenKey]);
+    return { ...baseScene, entities: Object.fromEntries(Object.entries(baseScene.entities).map(([id, e]) => [id, ids.includes(id) ? { ...e, down: true } : e])) };
+  }, [resolved.scene, brokenKey]);
 
   const stageScene = labScene ?? chaosScene;
-  const shownValues: Record<string, MetricValue> = Object.assign({}, values, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
+  const shownValues: Record<string, MetricValue> = Object.assign({}, values, resolved.metrics, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
   useEffect(() => setActiveStep(step), [step]);
   useEffect(() => {
     const onPopState = () => {
@@ -334,7 +350,25 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     const next = !instance.isPaused;
     instance.setPaused(next);
     setPaused(next);
+    if (!next && hasBeats) {
+      if (beatIndex >= beats.length - 1) setBeatIndex(0);
+      setBeatAuto(true);
+    }
+  }, [hasBeats, beatIndex, beats.length]);
+  const replay = useCallback(() => {
+    setBeatIndex(0);
+    setBeatAuto(true);
+    if (stage.current?.isPaused) {
+      stage.current.setPaused(false);
+      setPaused(false);
+    }
+    stage.current?.replay();
   }, []);
+  const stepBeat = useCallback((delta: number) => {
+    if (!hasBeats) return;
+    setBeatAuto(false);
+    setBeatIndex((i) => Math.max(0, Math.min(beats.length - 1, i + delta)));
+  }, [hasBeats, beats.length]);
   useEffect(() => {
     markVisited(lesson.id, index);
     setLastStep(lesson.id, index + 1);
@@ -353,15 +387,18 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
       const key = ev.key.toLowerCase();
       if (key === 'arrowright' || key === 'pagedown') nav(1);
       else if (key === 'arrowleft' || key === 'pageup') nav(-1);
+      else if ((key === 'arrowdown' || key === '.') && hasBeats) stepBeat(1);
+      else if ((key === 'arrowup' || key === ',') && hasBeats) stepBeat(-1);
+      else if (key === '[') onToggleSidebar();
       else if (key === ' ') togglePause();
-      else if (key === 'r') stage.current?.replay();
+      else if (key === 'r') replay();
       else if (key === 'f') stage.current?.fit();
       else return;
       ev.preventDefault();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [nav, togglePause]);
+  }, [nav, togglePause, replay, stepBeat, hasBeats, onToggleSidebar]);
   return <GlossaryScope locale={locale} className="lesson">
     <section className={`center${lab || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
@@ -369,8 +406,9 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
       </header>
       <div className="stage-card"><div className="stage-top">
         <div className="metrics">{lesson.metrics.map((m) => <Metric key={m.id} label={m.label} value={shownValues[m.id] ?? '—'} locale={locale} />)}</div>
-        <div className="controls"><button className="btn small replay" type="button" title="R" onClick={() => stage.current?.replay()}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
-      </div><Diagram scene={stageScene} stageRef={stage} jump={false} breakable={canBreak ? Object.keys(current.chaos ?? {}).join(',') : ''} broken={canBreak ? brokenKey : ''} onEntityClick={toggleBroken} /><div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
+        <div className="controls"><button className="btn small replay" type="button" title="R" onClick={replay}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
+      </div><Diagram scene={stageScene} stageRef={stage} jump={false} breakable={canBreak ? Object.keys(current.chaos ?? {}).join(',') : ''} broken={canBreak ? brokenKey : ''} onEntityClick={toggleBroken} />
+      <div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
         const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
         return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
       })}</div><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
@@ -397,7 +435,23 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
       </article>
       <nav className="step-nav"><button className="btn prev" type="button" disabled={index === 0} onClick={() => nav(-1)}>← {t('step.back')}</button><button className="btn primary next" type="button" onClick={() => nav(1)}>{lesson.steps[index + 1] ? `${t('step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${t('step.finish')} ✓`}</button></nav>
       <p className="keys">{t.rich('step.keys', { kbd: (chunks) => <kbd>{chunks}</kbd> })}</p>
-    </div><div className="learn-card"><h3>{t('lesson.learn')}</h3><ul className="learn">{lesson.goals.map((g, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, g.step)} onClick={(event) => onStepLink(event, g.step)} data-step={g.step} className={seen.has(g.step - 1) ? 'is-done' : undefined}><i className="check" aria-hidden="true" /><GlossaryPlain text={g.text} /></Link></li>)}</ul></div></aside>
+    </div><div className="learn-card"><h3>{t('lesson.learn')}</h3><ul className="learn">{lesson.goals.map((g, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, g.step)} onClick={(event) => onStepLink(event, g.step)} data-step={g.step} className={seen.has(g.step - 1) ? 'is-done' : undefined}><i className="check" aria-hidden="true" /><GlossaryPlain text={g.text} /></Link></li>)}</ul></div>
+      {hasBeats && (
+        <div className="beat-card" role="group" aria-label={t('stage.beatOf', { i: beatIndex + 1, n: beats.length })}>
+          <div className="beat-head">
+            <span className="beat-label">{resolved.beat?.label ?? t('stage.beatOf', { i: beatIndex + 1, n: beats.length })}</span>
+            <span className="beat-count">{t('stage.beatOf', { i: beatIndex + 1, n: beats.length })}</span>
+          </div>
+          <div className="beat-controls">
+            <button className="beat-nav" type="button" disabled={beatIndex === 0} aria-label={t('stage.prevBeat')} title="↑ / ," onClick={() => stepBeat(-1)}>‹</button>
+            <div className="beat-dots">{beats.map((b, i) => (
+              <button key={i} type="button" className={`beat-dot${i === beatIndex ? ' is-active' : i < beatIndex ? ' is-done' : ''}`} aria-current={i === beatIndex ? 'step' : undefined} title={b.label ?? String(i + 1)} onClick={() => { setBeatAuto(false); setBeatIndex(i); }}>{i + 1}</button>
+            ))}</div>
+            <button className="beat-nav" type="button" disabled={beatIndex >= beats.length - 1} aria-label={t('stage.nextBeat')} title="↓ / ." onClick={() => stepBeat(1)}>›</button>
+          </div>
+        </div>
+      )}
+    </aside>
   </GlossaryScope>;
 }
 
@@ -406,11 +460,20 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
   const router = useRouter();
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [navOpen, setNavOpen] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const refreshProgress = useCallback(() => setProgress(readProgress()), []);
   const closeNav = useCallback(() => setNavOpen(false), []);
+  const toggleSidebar = useCallback(() => {
+    setNavHidden((prev) => {
+      const next = !prev;
+      save('navHidden', next);
+      return next;
+    });
+  }, []);
   const found = lessonId ? findInCourse(lessonId) : undefined;
   useEffect(() => {
     refreshProgress();
+    setNavHidden(load('navHidden', false));
     const saved = load<'light' | 'dark' | null>('theme', null);
     document.documentElement.dataset.theme = saved === 'dark' || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   }, [refreshProgress]);
@@ -437,9 +500,10 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
   };
   return <>
     <header className="top"><button className="icon-btn menu" type="button" aria-label={t('nav.menu')} aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>☰</button>
+      <button className={`icon-btn sidebar-toggle${navHidden ? ' is-on' : ''}`} type="button" title={`${navHidden ? t('nav.showSidebar') : t('nav.hideSidebar')} ([)`} aria-label={navHidden ? t('nav.showSidebar') : t('nav.hideSidebar')} aria-pressed={navHidden} onClick={toggleSidebar}><svg viewBox="0 0 18 16" width="15" height="13" aria-hidden="true"><rect x="1" y="1.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" /><line x1="6.5" y1="1.5" x2="6.5" y2="14.5" stroke="currentColor" strokeWidth="1.5" /></svg><span>{t('nav.wide')}</span></button>
       <Link className="brand" href={homePath(locale)}><svg viewBox="0 0 28 28" width="22" height="22" aria-hidden="true"><polygon points="14,3 25,8.5 14,14 3,8.5" className="logo-top" /><polygon points="3,8.5 14,14 14,25 3,19.5" className="logo-l" /><polygon points="25,8.5 14,14 14,25 25,19.5" className="logo-r" /></svg>Scale Lab</Link>
       <div className="top-right"><div className="lang" role="group" aria-label={t('lang.label')}>{LOCALES.map((l) => <button key={l.id} type="button" title={l.name} aria-pressed={l.id === locale} onClick={() => switchLocale(l.id)}>{l.short}</button>)}</div><button className="icon-btn theme" type="button" title={t('theme.toggle')} aria-label={t('theme.toggle')} onClick={() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark')}>◐</button></div>
     </header>
-    <div className="shell"><Sidebar locale={locale} currentId={lesson?.id} progress={progress} /><div className="nav-scrim" onClick={closeNav} /><main id="view">{lesson && found ? <LessonScreen key={`${locale}/${lesson.id}`} lesson={lesson} place={found} locale={locale} step={step} progress={progress} onProgress={refreshProgress} onStepNavigation={closeNav} /> : <Home locale={locale} progress={progress} />}</main></div>
+    <div className={`shell${navHidden ? ' is-nav-hidden' : ''}`}><Sidebar locale={locale} currentId={lesson?.id} progress={progress} /><div className="nav-scrim" onClick={closeNav} /><main id="view">{lesson && found ? <LessonScreen key={`${locale}/${lesson.id}`} lesson={lesson} place={found} locale={locale} step={step} progress={progress} onProgress={refreshProgress} onStepNavigation={closeNav} onToggleSidebar={toggleSidebar} /> : <Home locale={locale} progress={progress} />}</main></div>
   </>;
 }
