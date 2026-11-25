@@ -187,6 +187,11 @@ Periksa setiap lesson baru terhadap daftar berikut:
 7. **Jangan menghindari struktur yang bagus hanya supaya terlihat berbeda.** Urutan alami sebuah topik
    (misalnya DNS → connect → request → server → response) memang sama di mana-mana dan boleh dipakai.
    Keaslian ada di teks, skenario, nama, angka, dan detail case. Semua itu wajib ditulis sendiri.
+8. **Ringkas, membumi, langsung kena poin.** Gunakan kalimat pendek dan bahasa sehari-hari yang mudah
+   dipahami orang awam — tanpa metafora berbelit, tanpa jargon mentah yang menumpuk, dan selalu **ditulis
+   orisinal** (jangan menyalin kalimat dari sumber referensi). Buka step dengan situasi nyata, jelaskan
+   mekanismenya secara lugas dalam 1–2 kalimat per paragraf, dan tutup dengan satu insight tajam. Pastikan
+   istilah glosarium tetap muncul wajar di teks.
 
 ### 4.1b Diagram harus bercerita (wajib untuk lesson baru)
 

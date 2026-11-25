@@ -8,7 +8,7 @@ const AUTH = service(28, -25, { label: 'authoritative DNS', sub: 'news.example',
 const WEB = server(23, 0, { label: 'web server', sub: 'news.example', icon: 'server', count: 3 });
 const DB = db(42, 0, { label: 'database', icon: 'database', fill: 0.45 });
 
-const dnsLink = link('browser', 'resolver', { dashed: true, label: 'cached · 5 min' });
+const dnsLink = link('browser', 'resolver', { dashed: true, label: 'saved · 5 min' });
 
 interface TripOpts {
   browser?: Partial<Entity>;
@@ -54,7 +54,7 @@ const CPU = (value: number, tone: 'good' | 'warn' | 'bad' | 'info' = 'good') => 
 export const requestLifecycle: Lesson = {
   id: 'request-lifecycle',
   title: 'How a Request Travels',
-  summary: 'Follow one click from the browser to the database and back, put a time on every hop, and find out why some readers wait seconds.',
+  summary: 'Follow one click from your browser to the database and back, put a time on every step, and see why some readers wait seconds.',
   minutes: 12,
   level: 'beginner',
   metrics: [
@@ -76,21 +76,21 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Feels slow',
       chapter: 'problem',
-      title: 'Readers say the site is slow',
+      title: 'Why does news.example feel slow?',
       body: [
-        'A news site, <code>news.example</code>, gets a stream of complaints: “articles take ages to open”. The team’s own tests look fine — about 0.4 seconds from click to page. Yet some readers clearly wait two seconds or more.',
-        'To find out why, follow one request from the moment a reader clicks a headline until the article is on screen, and put a time on every hop. The bar above the diagram will add the hops up as we go.',
+        'Readers write in saying <code>news.example</code> takes ages to load. Yet when you click an article at your desk, it opens in about 0.4 seconds.',
+        'To see why two people get such different speeds, trace one click from your screen to the server and back. The bar above counts each stop along the way.',
       ],
-      callout: { kind: 'insight', text: 'You can only fix “slow” once you know which hop is slow. Start by listing the hops.' },
+      callout: { kind: 'insight', text: 'A page load is a chain of small handoffs. Fix the slowest link first, or nothing changes.' },
       metrics: { dns: '?', connect: '?', server: '?', download: '?', total: { v: '0.4 s … 2 s+', tone: 'warn' } },
       scene: {
         entities: {
           browser: { ...BROWSER, focus: true },
           web: server(23, 0, { label: 'news.example', sub: 'somewhere out there', ghost: true, count: 3 }),
-          trace: card(23, -18, 'Latency mystery', [
-            '✓ team test:  ~0.4 s (400 ms)',
-            '! some users:  2.0 s+',
-            '> trace every hop from click',
+          trace: card(23, -18, 'Where does the time go?', [
+            '✓ on your laptop:  ~0.4 s',
+            '! some readers:     2.0 s+',
+            '> follow 1 click step by step',
           ]),
         },
         links: { bw: link('browser', 'web', { dashed: true, arrow: true, label: 'click → article' }) },
@@ -100,30 +100,30 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Find address',
       chapter: 'technique',
-      title: 'Find the address: DNS',
+      title: 'Turn a name into a number: DNS',
       body: [
-        'Networks route by IP address, not by name. The browser checks its own cache, then the operating system’s. On a miss it asks a <b>recursive resolver</b> — usually run by your ISP or a public service — which walks the DNS hierarchy (root, then <code>.example</code>, then the domain’s <b>authoritative</b> server) and returns an address such as <code>203.0.113.7</code>.',
-        'A cold lookup costs a few round trips, often 20–100 ms. The answer comes with a <b>TTL</b>, so for a while every later lookup is answered from a cache in well under a millisecond.',
+        'Machines find each other by IP address, not by name. Your browser checks its own memory, then your computer’s. If neither has it, it asks a <b>DNS resolver</b> (usually run by your ISP), which tracks down the real number: <code>203.0.113.7</code>.',
+        'A fresh lookup takes a few quick trips, about <b>40 ms</b> here. The answer comes with a <b>TTL</b> (“keep this for 5 minutes”), so the next clicks skip this step completely.',
       ],
-      callout: { kind: 'tip', text: 'Short TTLs let you move traffic quickly during an incident; long TTLs make lookups cheaper. Choose per record.' },
-      changes: ['+ browser & OS caches miss; resolver walks hierarchy for news.example'],
+      callout: { kind: 'tip', text: 'Short TTLs let you move traffic fast during an outage. Long TTLs keep lookups free for repeat visitors.' },
+      changes: ['+ browser asks a DNS resolver for news.example'],
       metrics: { dns: '40 ms' },
       scene: {
         entities: {
-          browser: { ...BROWSER, badge: { text: 'cache: MISS', tone: 'warn' } },
-          resolver: { ...RESOLVER, sub: 'ISP / public', badge: { text: 'cache: MISS', tone: 'warn' } },
+          browser: { ...BROWSER, badge: { text: 'no IP yet', tone: 'warn' } },
+          resolver: { ...RESOLVER, sub: 'ISP / public', badge: { text: 'not cached', tone: 'warn' } },
           auth: AUTH,
           web: server(23, 0, { label: 'news.example', sub: '203.0.113.7', ghost: true, count: 3 }),
           trace: card(24, 21, 'DNS lookup · 40 ms', [
-            '# 1. browser cache: MISS',
-            '# 2. OS cache:      MISS',
-            '> 3. resolver → root → auth',
-            '✓ 4. 203.0.113.7 (TTL 5 min)',
+            '# 1. browser cache: miss',
+            '# 2. OS cache:      miss',
+            '> 3. ask DNS → 203.0.113.7',
+            '✓ 4. save for 5 min (TTL)',
           ]),
         },
         links: {
           br: link('browser', 'resolver', { arrow: true, label: 'news.example?' }),
-          ra: link('resolver', 'auth', { arrow: true, label: 'root → .example → auth' }),
+          ra: link('resolver', 'auth', { arrow: true, label: 'find real IP' }),
           bw: link('browser', 'web', { dashed: true, label: 'needs IP first' }),
         },
         flows: [{ route: ['br', 'ra'], kind: 'ping', rate: 0.7, bounce: true, returnKind: 'ping' }],
@@ -132,24 +132,24 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Connect',
       chapter: 'technique',
-      title: 'Open a connection',
+      title: 'Agree to talk and lock the line',
       body: [
-        'Before a single byte of the article moves, the two sides set up a connection. <b>TCP</b> agrees on sequence numbers in one round trip. <b>TLS</b> then proves the server really is <code>news.example</code> and agrees on encryption keys — one more round trip with TLS 1.3.',
-        'If the server is 30 ms away, that is 60 ms of pure waiting. Bandwidth doesn’t help: handshakes are a few tiny messages, and each one pays the full round trip. Notice the resolver stays put — its answer is cached now.',
+        'Before any data moves, the two machines shake hands twice. First, <b>TCP</b> opens a reliable connection in one round trip. Then <b>TLS</b> checks the server’s identity and locks the line with encryption — one more round trip.',
+        'At 30 ms per <b>round trip</b> (RTT), two handshakes cost <b>60 ms</b> of pure waiting. Faster internet bandwidth doesn’t help here: tiny “hello” messages still have to cross the distance twice.',
       ],
-      callout: { kind: 'insight', text: 'Round-trip time (RTT) is the unit of network latency. Count the round trips, then multiply.' },
-      changes: ['+ DNS answer cached for 5 minutes', '+ TCP + TLS handshake: 2 round trips of 30 ms'],
+      callout: { kind: 'insight', text: 'Round-trip time (RTT) is the unit of network delay. Count the round trips, then multiply.' },
+      changes: ['+ IP saved at the resolver for 5 minutes', '+ TCP + TLS handshakes: 2 round trips × 30 ms'],
       metrics: { connect: '60 ms' },
       scene: trip({
         db: false,
-        resolver: { badge: { text: 'TTL 5 min', tone: 'good' } },
-        web: { sub: '203.0.113.7', badge: { text: 'TLS 1.3 · open', tone: 'good' } },
+        resolver: { badge: { text: 'saved · 5 min', tone: 'good' } },
+        web: { sub: '203.0.113.7', badge: { text: 'TLS · open', tone: 'good' } },
         request: { label: 'TCP + TLS · 2 RTT' },
         extra: {
           trace: card(24, 21, 'Handshake · 2 RTT = 60 ms', [
-            '✓ RTT 1 (TCP): SYN → ← SYN-ACK',
-            '> RTT 2 (TLS): ACK+Hello → ← Cert',
-            '✓ socket: open · encrypted',
+            '✓ 1. TCP (1 RTT): agree to talk',
+            '> 2. TLS (1 RTT): prove ID + lock',
+            '✓ encrypted line ready (60 ms)',
             '# 0 bytes of article sent yet',
           ]),
         },
@@ -161,23 +161,22 @@ export const requestLifecycle: Lesson = {
       chapter: 'technique',
       title: 'Send the request',
       body: [
-        'Now the browser sends an <b>HTTP request</b>: a few hundred bytes of text naming a <b>method</b> (<code>GET</code>), a <b>path</b> (the article), and <b>headers</b> — the host name, the reader’s preferred language, and a cookie that identifies their session.',
-        'It travels over the connection that is already open, so it costs half a round trip to arrive. The server reads it, checks the cookie, and works out what it has to produce.',
+        'Now the line is open, so the browser sends an <b>HTTP request</b> — a few hundred bytes of plain text saying what it wants (<code>GET</code> this article), which site it is for, your language, and a cookie identifying your session.',
+        'Because the connection is already open, this takes half a round trip to arrive: <b>15 ms</b>. The server reads it, checks your cookie, and starts building the page.',
       ],
       changes: ['+ GET request over the open connection (15 ms one way)'],
       metrics: { server: '30 ms + work' },
       scene: trip({
         db: false,
-        browser: { badge: { text: 'socket open', tone: 'info' } },
-        web: { badge: { text: 'parse + cookie', tone: 'info' } },
+        browser: { badge: { text: 'line open', tone: 'info' } },
+        web: { badge: { text: 'reads request', tone: 'info' } },
         request: { label: 'GET /storm-warning' },
         extra: {
           trace: card(24, 21, 'HTTP request · ~400 B', [
             '> GET /2026/11/storm-warning',
             '  Host: news.example',
-            '  Accept-Language: en',
-            '✓ Cookie: session=7f3a…',
-            '# 0.5 RTT wire trip (15 ms)',
+            '  Lang: en · Cookie: 7f3a…',
+            '✓ arrives in 15 ms (half RTT)',
           ]),
         },
         flows: [{ route: ['bw'], rate: 1.2, bounce: true }],
@@ -186,23 +185,23 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Fetch data',
       chapter: 'technique',
-      title: 'The server asks the database',
+      title: 'Fetch the data and build the page',
       body: [
-        'The article’s text, author and comments live in a database. The web server sends it a few queries over a connection inside the data centre, where a round trip takes about half a millisecond. A well-indexed query finishes in a few milliseconds; rendering the HTML takes a few more.',
-        'Notice how small these numbers are next to the network: about 25 ms of work, with the CPU barely busy. A typical request spends more time travelling than being worked on — as long as the server does a sensible amount of work.',
+        'The article text, author, and comments live in a <b>database</b>. Inside the data centre, machines sit close together — a round trip takes half a millisecond. Three quick queries fetch what is needed, and the server builds the HTML.',
+        'All of that server work takes just <b>25 ms</b>, with the CPU barely busy at 20%. When things are healthy, a request spends far more time travelling than being worked on.',
       ],
       changes: ['+ 3 queries inside the data centre, ~25 ms of work'],
       chaos: {
         db: {
-          text: 'The web server still answers, but it cannot build the article without its data. Readers get an error page — or wait for a timeout if the server keeps trying. One dependency down takes this page down.',
+          text: 'The web server still answers, but it cannot build the article without its data. Readers get an error page instead. Click again to repair it.',
           metrics: { server: { v: '500 error', tone: 'bad' }, total: { v: 'error page', tone: 'bad' } },
         },
         web: {
-          text: 'DNS still points at <code>203.0.113.7</code>, but nothing answers there. The browser waits for the connection until it gives up. With one server, one failure means the whole site is down — Module 02 puts several servers behind one address.',
+          text: 'DNS still points at <code>203.0.113.7</code>, but nothing answers there. Readers wait until the connection times out. With one server, one failure takes the whole site down — Module 02 fixes that.',
           metrics: { connect: { v: 'timeout', tone: 'bad' }, total: { v: 'site down', tone: 'bad' } },
         },
         resolver: {
-          text: 'Nothing happens — yet. The browser already has the address, cached for 5 minutes. When that TTL runs out, new visitors cannot find the site even though the server is healthy.',
+          text: 'Nothing breaks — yet. Your browser already saved the address for 5 minutes. Only new visitors (or everyone once the 5 minutes expire) get stuck.',
         },
       },
       metrics: { server: '55 ms' },
@@ -210,14 +209,14 @@ export const requestLifecycle: Lesson = {
         web: CPU(0.2),
         db: { badge: { text: '3 queries · 15 ms', tone: 'good' } },
         request: { label: 'GET /storm-warning' },
-        query: { label: '3 SQL · 0.5 ms RTT' },
+        query: { label: '3 queries · 0.5 ms' },
         extra: {
-          trace: card(24, 22, 'Server runtime · 25 ms work', [
-            '✓ 1. verify cookie     1 ms',
-            '✓ 2. SELECT article    5 ms',
-            '✓ 3. SELECT author     4 ms',
-            '✓ 4. SELECT comments   6 ms',
-            '> 5. render HTML       9 ms',
+          trace: card(24, 22, 'Server work · 25 ms', [
+            '✓ 1. check session     1 ms',
+            '✓ 2. read article      5 ms',
+            '✓ 3. read author       4 ms',
+            '✓ 4. read comments     6 ms',
+            '> 5. build HTML        9 ms',
           ]),
         },
         flows: [{ route: ['bw', 'wd'], rate: 1.6, bounce: true }],
@@ -226,27 +225,27 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Response',
       chapter: 'solution',
-      title: 'The response comes back',
+      title: 'The first byte comes back',
       body: [
-        'The HTML streams back the way it came. The moment its first byte arrives is called <b>time to first byte</b> (TTFB): DNS + handshakes + the request trip + server work, here about 155 ms. The rest of the HTML follows within ~15 ms.',
-        'The browser starts drawing straight away — and discovers, while reading the HTML, that it needs more.',
+        'The finished HTML flows back over the open line. The moment the first byte arrives — here at <b>155 ms</b> — is called <b>time to first byte</b> (TTFB): DNS + handshakes + request + server work + return trip.',
+        'The rest of the HTML follows in 15 ms. Your browser starts drawing straight away — and while reading the HTML, discovers it needs forty more files.',
       ],
-      callout: { kind: 'tip', text: 'TTFB is the number to watch for your backend. Most of what happens after it is front-end work and network.' },
-      changes: ['+ HTML arrives: first byte after ~155 ms', '~ database queries are done; response streams back'],
+      callout: { kind: 'tip', text: 'TTFB measures your backend and connection speed together. Everything after it is downloading extra files and drawing.' },
+      changes: ['+ first byte of HTML arrives at ~155 ms', '~ database queries are done; HTML streams back'],
       metrics: { download: '15 ms', total: '170 ms' },
       scene: trip({
         browser: { badge: { text: 'TTFB 155 ms', tone: 'good' } },
-        web: { ...CPU(0.1), badge: { text: 'streaming HTML', tone: 'good' } },
-        db: { badge: { text: 'queries done', tone: 'good' } },
-        request: { label: 'HTML · first byte at 155 ms', labelTone: 'good' },
+        web: { ...CPU(0.1), badge: { text: 'sending HTML', tone: 'good' } },
+        db: { badge: { text: 'done', tone: 'good' } },
+        request: { label: 'HTML · 1st byte @ 155 ms', labelTone: 'good' },
         query: { dashed: true, label: 'idle' },
         extra: {
-          trace: card(24, 22, 'TTFB ledger · 155 ms', [
-            '✓ DNS + TCP + TLS     100 ms',
-            '✓ req (15) + work (25) 40 ms',
-            '✓ first byte back      15 ms',
-            '> parse <html> (+15 ms stream)',
-            '# found: CSS, JS, fonts, imgs',
+          trace: card(24, 22, 'TTFB · 155 ms', [
+            '✓ DNS + TCP + TLS    100 ms',
+            '✓ request + server    40 ms',
+            '✓ first byte back     15 ms',
+            '> read HTML (+15 ms stream)',
+            '# needs 40 more files inside',
           ]),
         },
         flows: [{ route: ['~bw'], kind: 'res', rate: 1.8, speed: 170 }],
@@ -257,22 +256,22 @@ export const requestLifecycle: Lesson = {
       chapter: 'technique',
       title: 'One page, forty more files',
       body: [
-        'The HTML references stylesheets, scripts, fonts and images — around forty files. Fetching them one after another would cost forty round trips, so the browser requests many at once; with HTTP/2 they all share the connection that is already open.',
-        'They still take a few round trips — some files are only discovered once others arrive — plus the time to download the bytes. Add the bar up: 40 + 60 + 55 + 245 ≈ 400 ms. That is the 0.4 s the team measured.',
+        'The HTML points to stylesheets, scripts, fonts, and photos — about forty files. Fetching them one by one would cost forty round trips, so with <b>HTTP/2</b> the browser requests many at once over the same open connection.',
+        'Some files are only discovered after others arrive, so they land in a few waves: <b>245 ms</b>. Add the bar up: 40 + 60 + 55 + 245 = <b>400 ms</b> — the 0.4 seconds on your laptop.',
       ],
-      changes: ['+ 40 more files over the same connection'],
+      changes: ['+ 40 extra files over the same open connection'],
       metrics: { download: '245 ms', total: { v: '400 ms', tone: 'good' } },
       scene: trip({
         browser: { badge: { text: 'HTTP/2 · 1 pipe', tone: 'info' } },
-        web: { ...CPU(0.3), badge: { text: '40 files served', tone: 'good' } },
+        web: { ...CPU(0.3), badge: { text: '40 files sent', tone: 'good' } },
         request: { label: '40 files · HTTP/2' },
-        query: { label: 'SELECT article · 5 ms' },
+        query: { label: 'read article · 5 ms' },
         extra: {
-          trace: card(24, 21, 'HTTP/2 waterfall · 245 ms', [
-            '✓ 1 open pipe (no new TLS)',
-            '✓ wave 1: CSS + JS in parallel',
+          trace: card(24, 21, 'HTTP/2 download · 245 ms', [
+            '✓ reuses open line (0 ms setup)',
+            '✓ wave 1: CSS + JS together',
             '✓ wave 2: fonts + 38 images',
-            '> page ready: 40+60+55+245 = 400 ms',
+            '> total: 40+60+55+245 = 400 ms',
           ]),
         },
         flows: [
@@ -284,26 +283,25 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Slow query',
       chapter: 'problem',
-      title: 'Case: forty-one queries for one page',
+      title: 'Why some pages stall: 41 queries instead of 1',
       body: [
-        'One group of complaints comes from popular articles. Their comment section loads the comments, then looks up each commenter in a separate query: 1 query for the list plus 40 for the authors. At ~10 ms each that is about 410 ms, and every reader of that article waits for it.',
-        'Look at the server: its CPU is <i>quieter</i> than before, because it spends its time waiting. This is the classic <b>N+1 query</b> problem. One query that fetches comments and authors together brings server time back to normal. Same network, same handshakes — the fix is in the database access.',
+        'One group of complaints comes from popular articles with many comments. The code fetches the comment list (1 query), then fetches each commenter’s name in a separate query — <b>40 extra trips</b> to the database. At ~10 ms each, that adds <b>410 ms</b>.',
+        'Look at the server’s CPU: it actually <i>drops</i> to 15%, because it spends its time waiting. This is an <b>N+1 query</b>. Combining them into one query brings server time right back to normal.',
       ],
-      callout: { kind: 'warning', text: 'Measure before optimising. When the network is fine but the server column grows, count the queries before buying hardware.' },
-      changes: ['+ comments load each author separately: 40 extra queries', '~ server CPU drops — it is waiting, not working'],
+      callout: { kind: 'warning', text: 'Measure before buying hardware. Low CPU plus slow server time usually means waiting on too many queries.' },
+      changes: ['+ comments fetch each author separately: 40 extra queries', '~ CPU drops to 15% — waiting, not working'],
       metrics: { server: { v: '440 ms', tone: 'bad' }, total: { v: '785 ms', tone: 'bad' } },
       scene: trip({
-        web: { ...CPU(0.15, 'info'), badge: { text: 'blocked · I/O wait', tone: 'warn' } },
+        web: { ...CPU(0.15, 'info'), badge: { text: 'waiting on DB', tone: 'warn' } },
         db: { badge: { text: '41 queries · 410 ms', tone: 'bad' } },
         request: { label: 'GET /storm-warning' },
-        query: { label: 'SELECT author × 40', labelTone: 'bad' },
+        query: { label: 'read author × 40', labelTone: 'bad' },
         extra: {
-          trace: card(24, 22, 'N+1 execution trace', [
-            '✓ 1× SELECT comments    10 ms',
-            '! loop 40× SELECT author',
-            '!   40 × 10 ms = 400 ms wait',
-            '> CPU drops to 15% (I/O wait)',
-            '# fix: 1 JOIN query → ~15 ms',
+          trace: card(24, 22, 'N+1 query · 410 ms', [
+            '✓ 1× read 40 comments  10 ms',
+            '! 40× read author     400 ms',
+            '! CPU drops to 15% (waiting!)',
+            '> fix: 1 combined query → ~15 ms',
           ]),
         },
         flows: [
@@ -315,13 +313,13 @@ export const requestLifecycle: Lesson = {
     {
       short: 'Far away',
       chapter: 'problem',
-      title: 'Case: a reader far away',
+      title: 'Why distant readers wait two seconds',
       body: [
-        'The worst complaints come from a reader on a mobile network on another continent. Their round trip to the server is about 300 ms instead of 30. Every round trip on the list is now ten times more expensive: two for the handshakes, one for the request, several for the files discovered along the way.',
-        'Time to first byte alone passes one second, and the page lands after two. The server is just as fast as before — the time is all distance. Fewer round trips and content placed closer to readers are the fixes, and the subject of later lessons.',
+        'The worst complaints come from a reader on mobile on another continent. Their round trip is <b>300 ms</b> instead of 30 — ten times farther. Every round trip on the list now costs 10× as much.',
+        'The server is just as fast as before (25 ms of work). Yet handshakes take 600 ms and the forty files take a full second. Out of ~2.0 seconds, <b>99% is pure distance</b>.',
       ],
-      callout: { kind: 'insight', text: 'Latency has two big sources: work on the server and distance on the network. They need different fixes.' },
-      changes: ['+ a reader with a 300 ms round trip', '~ N+1 fixed: server work is back to normal', '~ every round trip costs 10× more'],
+      callout: { kind: 'insight', text: 'Slowness has two big sources: work on the server and distance on the network. Each needs a different fix.' },
+      changes: ['+ a reader 300 ms away joins the stage', '~ N+1 fixed: server work is back to 25 ms', '~ every round trip costs 10× more'],
       metrics: {
         dns: { v: '100 ms', tone: 'warn' },
         connect: { v: '600 ms', tone: 'bad' },
@@ -330,20 +328,20 @@ export const requestLifecycle: Lesson = {
         total: { v: '~2.0 s', tone: 'bad' },
       },
       scene: trip({
-        browser: { sub: 'local · 30 ms RTT', badge: { text: '400 ms total', tone: 'good' } },
+        browser: { sub: 'nearby · 30 ms RTT', badge: { text: '400 ms total', tone: 'good' } },
         web: { ...CPU(0.2), badge: { text: 'work still 25 ms', tone: 'good' } },
         db: { badge: { text: 'healthy · 5 ms', tone: 'good' } },
         request: { label: 'RTT 30 ms' },
-        query: { label: 'SELECT article · 5 ms' },
+        query: { label: 'read article · 5 ms' },
         far: { label: 'RTT 300 ms (10×)', labelTone: 'bad' },
         extra: {
           far: { ...FAR, badge: { text: '~2.0 s total', tone: 'bad' } },
-          trace: card(30, 24, 'Distance cost · 300 ms RTT', [
-            '✓ server work:      25 ms (1%)',
-            '! DNS cold:        100 ms',
-            '! TCP+TLS (2 RTT): 600 ms',
-            '! req+res (1 RTT): 300 ms',
-            '! 40 files:      1,000 ms',
+          trace: card(30, 24, 'Same work, 10× distance', [
+            '✓ server work: still 25 ms (1%)',
+            '! DNS cold:             100 ms',
+            '! TCP + TLS (2 RTT):    600 ms',
+            '! request + reply:      300 ms',
+            '! 40 files (~3.3 RTT): 1,000 ms',
             '> 99% of ~2.0 s is distance',
           ]),
         },
@@ -358,27 +356,27 @@ export const requestLifecycle: Lesson = {
       chapter: 'recap',
       title: 'Where the time went',
       body: [
-        'One click, a handful of hops, and a bar that adds them up. Keep this table as a checklist the next time a page feels slow:',
-        `<table class="compare"><thead><tr><th>hop</th><th>typical cost</th><th>slow when…</th><th>see</th></tr></thead><tbody>
+        'One click, a handful of conversations between machines, and a total that adds them up. Keep this checklist for the next time a page feels slow:',
+        `<table class="compare"><thead><tr><th>step</th><th>typical cost</th><th>slow when…</th><th>see</th></tr></thead><tbody>
           <tr><td>DNS lookup</td><td>20–100 ms cold</td><td>nothing is cached</td><td>this lesson</td></tr>
           <tr><td>TCP + TLS</td><td>2 round trips</td><td>the reader is far away</td><td>CDNs</td></tr>
-          <tr><td>request + server</td><td>1 round trip + work</td><td>too many or unindexed queries</td><td>Caching, Indexes</td></tr>
-          <tr><td>download</td><td>a few round trips</td><td>files are discovered one by one</td><td>Caching, CDNs</td></tr></tbody></table>`,
-        'Check yourself: a reader 200 ms away complains, and your server time is 20 ms. Which helps more — a faster database or fewer round trips? (Fewer round trips: each one costs ten times the whole server time.)',
+          <tr><td>request + server</td><td>1 round trip + work</td><td>too many or slow queries</td><td>Caching, Indexes</td></tr>
+          <tr><td>download</td><td>a few waves</td><td>files discovered one by one</td><td>Caching, CDNs</td></tr></tbody></table>`,
+        'Check yourself: a reader 200 ms away complains, and your server work takes 20 ms. Which helps more — a faster database or fewer round trips? (Fewer round trips: each one costs ten times your entire server time — try it below.)',
       ],
-      callout: { kind: 'insight', text: 'Latency is a sum. Write down the terms, find the biggest, and shrink that one first.' },
+      callout: { kind: 'insight', text: 'Latency is addition. Write down the parts, find the biggest number, and shrink that one first.' },
       scene: trip({
-        browser: { sub: 'local · 30 ms RTT', badge: { text: '400 ms', tone: 'good' } },
+        browser: { sub: 'nearby · 30 ms RTT', badge: { text: '400 ms', tone: 'good' } },
         web: CPU(0.2),
         request: { label: 'RTT 30 ms' },
-        query: { label: 'SELECT article · 5 ms' },
+        query: { label: 'read article · 5 ms' },
         far: { label: 'RTT 300 ms', labelTone: 'warn' },
         extra: {
           far: { ...FAR, badge: { text: '~2.0 s', tone: 'bad' } },
-          trace: card(30, 23, 'Latency equation', [
-            'page = DNS + TLS + (1 RTT + work) + dl',
-            '✓ local (30 ms RTT):    400 ms',
-            '! far (300 ms RTT):   ~2,000 ms',
+          trace: card(30, 23, 'Where time goes', [
+            'total = DNS + TLS + (RTT+work) + dl',
+            '✓ nearby (30 ms RTT):    400 ms',
+            '! far (300 ms RTT):    ~2,000 ms',
             '> shrink the biggest term first',
           ]),
         },

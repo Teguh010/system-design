@@ -52,10 +52,10 @@ export const requestLifecycleLab: Lab = {
   title: { en: 'Try it yourself', id: 'Coba sendiri' },
   intro: {
     en: 'One reader, two knobs. Set the round trip to 200 ms and server work to 20 ms to check your answer below, then see which knob moves the total more.',
-    id: 'Satu pembaca, dua kenop. Atur round trip ke 200 ms dan kerja server ke 20 ms untuk memeriksa jawabanmu di bawah, lalu lihat kenop mana yang lebih menggeser total.',
+    id: 'Satu pembaca, dua kenop. Atur round trip ke 200 ms dan kerja server ke 20 ms untuk cek jawabanmu di bawah, lalu lihat kenop mana yang lebih menggeser total.',
   },
   controls: [
-    { id: 'rtt', label: { en: 'round trip to the server', id: 'round trip ke server' }, min: 10, max: 400, step: 10, value: 30, unit: 'ms' },
+    { id: 'rtt', label: { en: 'round trip to server', id: 'round trip ke server' }, min: 10, max: 400, step: 10, value: 30, unit: 'ms' },
     { id: 'work', label: { en: 'server work', id: 'kerja server' }, min: 5, max: 500, step: 5, value: 25, unit: 'ms' },
   ],
   compute(values, locale, base) {
@@ -74,8 +74,8 @@ export const requestLifecycleLab: Lab = {
     const [biggest, ms] = terms.reduce((a, c) => (c[1] > a[1] ? c : a));
     const name = TERM_NAMES[biggest][locale];
     const note = locale === 'id'
-      ? `Komponen terbesar: ${name} (${formatMs(ms, locale)}). Kecilkan yang itu dulu.`
-      : `Biggest term: ${name} (${formatMs(ms, locale)}). Shrink that one first.`;
+      ? `Angka terbesar: ${name} (${formatMs(ms, locale)}). Kecilkan yang itu dulu.`
+      : `Biggest part: ${name} (${formatMs(ms, locale)}). Shrink that one first.`;
 
     const { far: _far, ...restEntities } = base.entities;
     const { fw: _fw, ...links } = base.links ?? {};
@@ -103,12 +103,12 @@ export const requestLifecycleLab: Lab = {
       trace: card(
         24,
         22,
-        locale === 'id' ? 'Persamaan latency (live)' : 'Latency equation (live)',
+        locale === 'id' ? 'Ke mana waktunya habis (live)' : 'Where time goes (live)',
         [
-          `${netTone === 'good' ? '✓' : '!'} DNS + TLS:  ${formatMs(b.dns + b.connect, locale)}`,
-          `${workTone === 'good' ? '✓' : '!'} req + work: ${formatMs(b.server, locale)}`,
-          `${termTone(b.download) ? '!' : '✓'} download:   ${formatMs(b.download, locale)}`,
-          `> ${locale === 'id' ? 'siap' : 'page ready'}: ${formatMs(b.total, locale, true)}`,
+          `${netTone === 'good' ? '✓' : '!'} DNS + TLS : ${formatMs(b.dns + b.connect, locale)}`,
+          `${workTone === 'good' ? '✓' : '!'} ${locale === 'id' ? 'req + kerja' : 'req + work '}: ${formatMs(b.server, locale)}`,
+          `${termTone(b.download) ? '!' : '✓'} download  : ${formatMs(b.download, locale)}`,
+          `> ${locale === 'id' ? 'siap       ' : 'page ready '}: ${formatMs(b.total, locale, true)}`,
           `# ${locale === 'id' ? 'terbesar' : 'biggest'}: ${name}`,
         ],
       ),
