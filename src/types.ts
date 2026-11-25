@@ -27,8 +27,18 @@ export interface Entity {
   icon?: IconName;
   /** Scale of the shape (not its labels), e.g. 1.6 for a bigger machine. */
   size?: number;
-  /** Number of figures drawn for `user` entities (1–3). */
+  /**
+   * Number of figures for `user` (1–3), layers for `tree` / `stack`, or rack units for `server`
+   * (1–5; without it a server is one tall tower). Units added between steps drop onto the stack.
+   */
   count?: number;
+  /** How full a `db` is, 0–1. The level animates between steps and turns amber, then red, as it fills. */
+  fill?: number;
+  /**
+   * Draws a soft neon glow under the shape: what the narration is about. When no entity in a scene
+   * sets it, the entities added or changed by the step glow instead.
+   */
+  focus?: boolean;
   /** Card title and monospace lines. Prefix a line with `! `, `✓ ` or `# ` to colour it. */
   title?: string;
   lines?: string[];

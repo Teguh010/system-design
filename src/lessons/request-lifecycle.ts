@@ -5,8 +5,8 @@ const BROWSER = client(0, 0, { label: 'you', sub: 'browser' });
 const FAR = client(0, 19, { label: 'reader far away', sub: 'mobile, other continent' });
 const RESOLVER = service(11, -19, { label: 'DNS resolver', icon: 'globe' });
 const AUTH = service(28, -25, { label: 'authoritative DNS', sub: 'news.example', icon: 'globe' });
-const WEB = server(23, 0, { label: 'web server', sub: 'news.example', icon: 'server' });
-const DB = db(42, 0, { label: 'database', icon: 'database' });
+const WEB = server(23, 0, { label: 'web server', sub: 'news.example', icon: 'server', count: 3 });
+const DB = db(42, 0, { label: 'database', icon: 'database', fill: 0.45 });
 
 const CACHED = RESOLVER;
 const dnsLink = link('browser', 'resolver', { dashed: true, label: 'cached · 5 min' });
@@ -76,8 +76,8 @@ export const requestLifecycle: Lesson = {
       metrics: { dns: '?', connect: '?', server: '?', download: '?', total: { v: '0.4 s … 2 s+', tone: 'warn' } },
       scene: {
         entities: {
-          browser: BROWSER,
-          web: server(23, 0, { label: 'news.example', sub: 'somewhere out there', ghost: true }),
+          browser: { ...BROWSER, focus: true },
+          web: server(23, 0, { label: 'news.example', sub: 'somewhere out there', ghost: true, count: 3 }),
           card: card(23, -17, 'Reader complaints', ['usually opens in ~0.4 s', '! some readers wait 2 s or more', '# where does the time go?']),
         },
         links: { bw: link('browser', 'web', { dashed: true, arrow: true, label: 'click' }) },
@@ -100,7 +100,7 @@ export const requestLifecycle: Lesson = {
           browser: BROWSER,
           resolver: RESOLVER,
           auth: AUTH,
-          web: server(23, 0, { label: 'news.example', sub: '203.0.113.7', ghost: true }),
+          web: server(23, 0, { label: 'news.example', sub: '203.0.113.7', ghost: true, count: 3 }),
         },
         links: {
           br: link('browser', 'resolver', { arrow: true, label: 'news.example?' }),

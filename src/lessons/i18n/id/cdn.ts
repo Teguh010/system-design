@@ -13,6 +13,7 @@ const overlay: LessonOverlay = {
   ],
   labels: {
     'edge miss → origin': 'edge miss → origin',
+    'poisoned cache': 'cache tercemar',
     'serves everything': 'melayani semuanya',
     'origin shield': 'origin shield',
     'edge Jakarta': 'edge Jakarta',

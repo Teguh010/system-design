@@ -133,6 +133,78 @@ function valuesAt(lesson: Lesson, i: number): Record<string, MetricValue> {
   return Object.assign({}, ...lesson.steps.slice(0, i + 1).map((s) => s.metrics));
 }
 
+/** `?record=1` hides everything but the title, metrics and diagram, for screen recording. */
+function useRecordMode() {
+  const [record, setRecord] = useState(false);
+  useEffect(() => {
+    const on = new URLSearchParams(window.location.search).get('record') === '1';
+    setRecord(on);
+    document.documentElement.classList.toggle('is-record', on);
+    return () => document.documentElement.classList.remove('is-record');
+  }, []);
+  return record;
+}
+
+type Num = { pre: string; n: number; dec: number; grouped: boolean; post: string };
+const separators = (locale: Locale) => (locale === 'id' ? { group: '.', dec: ',' } : { group: ',', dec: '.' });
+
+function parseNum(text: string, locale: Locale): Num | null {
+  const { group, dec } = separators(locale);
+  const g = `\\${group}`;
+  const d = `\\${dec}`;
+  const m = new RegExp(`^(.*?)(\\d[\\d${g}]*(?:${d}\\d+)?)(.*)$`).exec(text);
+  if (!m) return null;
+  const raw = m[2]!;
+  const [int = '', frac] = raw.split(dec);
+  return { pre: m[1]!, n: Number(`${int.split(group).join('')}${frac ? `.${frac}` : ''}`), dec: frac?.length ?? 0, grouped: int.includes(group), post: m[3]! };
+}
+
+function formatNum(n: number, like: Num, locale: Locale) {
+  const { group, dec } = separators(locale);
+  const [int = '', frac] = n.toFixed(like.dec).split('.');
+  const body = like.grouped ? int.replace(/\B(?=(\d{3})+(?!\d))/g, group) : int;
+  return `${like.pre}${body}${frac ? `${dec}${frac}` : ''}${like.post}`;
+}
+
+/** A metric card whose number counts to its new value, with a small pop when it changes. */
+function Metric({ label, value, locale }: { label: string; value: MetricValue; locale: Locale }) {
+  const text = typeof value === 'string' ? value : value.v;
+  const [shown, setShown] = useState(text);
+  const prev = useRef(text);
+  const card = useRef<HTMLDivElement>(null);
+  const val = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const from = prev.current;
+    prev.current = text;
+    if (from === text) return;
+    for (const [el, cls] of [[card.current, 'is-changed'], [val.current, 'flash']] as const) {
+      if (!el) continue;
+      el.classList.remove(cls);
+      void el.offsetWidth;
+      el.classList.add(cls);
+    }
+    const a = parseNum(from, locale);
+    const b = parseNum(text, locale);
+    // Count only between like units (or up from “?” / “—”); otherwise just swap the text.
+    if (!b || (a && (a.pre !== b.pre || a.post !== b.post)) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(text);
+      return;
+    }
+    const start = a?.n ?? 0;
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / 700);
+      const e = 1 - Math.pow(1 - k, 3);
+      setShown(k >= 1 ? text : formatNum(start + (b.n - start) * e, b, locale));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [text, locale]);
+  return <div className="metric" ref={card}><span className="m-label">{label}</span><span ref={val} className={`m-val${typeof value === 'string' ? '' : ` tone-${value.tone}`}`}>{shown}</span></div>;
+}
+
 function Changes({ lesson, index }: { lesson: Lesson; index: number }) {
   const t = useTranslations();
   if (!index) return null;
@@ -232,7 +304,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const timeline = useRef<HTMLOListElement>(null);
   const firstStep = useRef(true);
   const stepCard = useRef<HTMLDivElement>(null);
-  const shown = useRef(new Map<string, string>());
+  const record = useRecordMode();
   const [paused, setPaused] = useState(false);
   const [activeStep, setActiveStep] = useState(step);
   const index = Math.max(0, Math.min(lesson.steps.length - 1, Number.isFinite(activeStep) ? Math.trunc(activeStep) - 1 : 0));
@@ -246,7 +318,8 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const [skipped, setSkipped] = useState<Set<number>>(() => new Set());
   useEffect(() => setAnswers(readAnswers(lesson.id)), [lesson.id]);
   const choice = answers[index];
-  const pending = !!current.predict && choice === undefined && !skipped.has(index);
+  // While recording, one arrow press is one step: the predict question never holds a step back.
+  const pending = !record && !!current.predict && choice === undefined && !skipped.has(index);
   const choose = useCallback((i: number) => {
     saveAnswer(lesson.id, index, i);
     setAnswers((a) => ({ ...a, [index]: i }));
@@ -285,7 +358,6 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   const shownValues: Record<string, MetricValue> = pending
     ? valuesAt(lesson, Math.max(0, index - 1))
     : Object.assign({}, values, labResult?.metrics, ...broken.map((id) => current.chaos?.[id]?.metrics));
-  const shownKey = JSON.stringify(shownValues);
   useEffect(() => setActiveStep(step), [step]);
   useEffect(() => {
     const onPopState = () => {
@@ -297,7 +369,7 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
   }, [locale, lesson.id]);
   const goToStep = useCallback((next: number) => {
     if (next === index + 1) return;
-    window.history.pushState(null, '', lessonPath(locale, lesson.id, next));
+    window.history.pushState(null, '', lessonPath(locale, lesson.id, next) + window.location.search);
     setActiveStep(next);
     onStepNavigation();
   }, [index, locale, lesson.id, onStepNavigation]);
@@ -348,30 +420,13 @@ function LessonScreen({ lesson, place, locale, step, progress, onProgress, onSte
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [nav, togglePause, pending, current.predict, choose]);
-  useEffect(() => {
-    const elements = document.querySelectorAll<HTMLElement>('.metric[data-id] .m-val');
-    for (const el of elements) {
-      const id = el.parentElement?.dataset.id;
-      if (!id) continue;
-      const value = el.textContent ?? '';
-      if (shown.current.has(id) && shown.current.get(id) !== value) {
-        el.classList.remove('flash');
-        void el.offsetWidth;
-        el.classList.add('flash');
-      }
-      shown.current.set(id, value);
-    }
-  }, [index, lesson, shownKey]);
   return <GlossaryScope locale={locale} className="lesson">
     <section className={`center${(lab && !pending) || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
         <div className="l-title-row"><h1>{lesson.title}</h1><div className="pills"><span className="pill-chip p-time">◷ {t('lesson.min', { n: lesson.minutes })}</span><span className="pill-chip p-level">▮ {t(`level.${lesson.level}`)}</span><span className="pill-chip p-steps">☰ {t('lesson.steps', { n })}</span></div></div><p className="l-summary"><GlossaryPlain text={lesson.summary} /></p>
       </header>
       <div className="stage-card"><div className="stage-top">
-        <div className="metrics">{lesson.metrics.map((m) => {
-          const v = shownValues[m.id] ?? '—';
-          return <div className="metric" data-id={m.id} key={m.id}><span className="m-label">{m.label}</span><span className={`m-val${typeof v === 'string' ? '' : ` tone-${v.tone}`}`}>{typeof v === 'string' ? v : v.v}</span></div>;
-        })}</div>
+        <div className="metrics">{lesson.metrics.map((m) => <Metric key={m.id} label={m.label} value={shownValues[m.id] ?? '—'} locale={locale} />)}</div>
         <div className="controls"><button className="btn small replay" type="button" title="R" onClick={() => stage.current?.replay()}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
       </div><Diagram scene={stageScene} stageRef={stage} jump={false} breakable={canBreak ? Object.keys(current.chaos ?? {}).join(',') : ''} broken={canBreak ? brokenKey : ''} onEntityClick={toggleBroken} /><div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
         const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];

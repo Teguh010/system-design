@@ -5,7 +5,7 @@ const UPLOADERS = users(0, 0, { label: 'uploaders', sub: '400k/day', count: 3 })
 
 const SHARD_IDS = ['s0', 's1', 's2'] as const;
 type Sid = (typeof SHARD_IDS)[number];
-const ROW: Record<Sid, number> = { s0: -14, s1: 0, s2: 14 };
+const ROW: Record<Sid, number> = { s0: -17, s1: 0, s2: 17 };
 
 function ledger(o: {
   shards?: Sid[];
@@ -39,6 +39,7 @@ function ledger(o: {
     entities[id] = db(36, solo ? 0 : ROW[id], {
       label: solo ? 'Postgres' : `shard ${i}`,
       icon: 'database',
+      fill: solo ? 0.92 : 0.33,
       ...(solo && { sub: 'all rows' }),
       ...look,
     });
@@ -51,12 +52,12 @@ function ledger(o: {
     ?? (o.hot
       ? [
           { route: ['ua', `a${o.hot.slice(1)}`], kind: 'slow', rate: 2.2, bounce: true, speed: 50 },
-          ...ids.filter((id) => id !== o.hot).map((id) => ({ route: ['ua', `a${id.slice(1)}`], rate: 0.35, bounce: true })),
+          ...ids.filter((id) => id !== o.hot).map((id): Flow => ({ route: ['ua', `a${id.slice(1)}`], kind: 'write', rate: 0.35, bounce: true, returnKind: 'res' })),
         ]
       : spread(
           ids.map((id) => ['ua', `a${id.slice(1)}`]),
           2.6,
-          { bounce: true },
+          { kind: 'write', bounce: true, returnKind: 'res' },
         ));
 
   return { entities, links, flows };
@@ -75,7 +76,7 @@ export const sharding: Lesson = {
     { id: 'shards', label: 'shards' },
     { id: 'scatter', label: 'cross-shard' },
   ],
-  legend: ['req', 'res', ['write', 'metadata'], ['slow', 'hot shard']],
+  legend: ['req', 'res', ['write', 'insert'], ['slow', 'hot shard']],
   goals: [
     { text: 'See why replication is not enough for growth', step: 1 },
     { text: 'Partition rows with range and hash shard keys', step: 3 },
@@ -97,10 +98,7 @@ export const sharding: Lesson = {
       scene: ledger({
         solo: true,
         look: {
-          s0: {
-            meter: { label: 'disk', value: 0.92, tone: 'bad' },
-            badge: { text: 'leader', tone: 'good' },
-          },
+          s0: { badge: { text: 'leader', tone: 'good' }, focus: true },
         },
         links: { a0: link('app', 's0', { label: 'all inserts', labelTone: 'bad', arrow: true }) },
         extra: { card: card(18, -22, 'Growth', ['! disk 92% full', '! 12k writes/s', '# replicas ≠ more writes']) },
@@ -136,9 +134,9 @@ export const sharding: Lesson = {
       metrics: { disk: { v: '~600 GB / shard', tone: 'good' }, shards: '3', writes: { v: '~4k/s each', tone: 'good' } },
       scene: ledger({
         look: {
-          s0: { sub: 'users 0–499', badge: { text: 'even', tone: 'good' } },
-          s1: { sub: 'users 500–999', badge: { text: 'even', tone: 'good' } },
-          s2: { sub: 'users 1000+', badge: { text: 'even', tone: 'good' } },
+          s0: { sub: 'users 0–499', badge: { text: 'even', tone: 'good' }, focus: true },
+          s1: { sub: 'users 500–999', badge: { text: 'even', tone: 'good' }, focus: true },
+          s2: { sub: 'users 1000+', badge: { text: 'even', tone: 'good' }, focus: true },
         },
         links: {
           a0: link('app', 's0', { label: 'id < 500', labelTone: 'info', arrow: true }),
@@ -161,9 +159,9 @@ export const sharding: Lesson = {
       scene: ledger({
         hot: 's0',
         look: {
-          s0: { meter: { label: 'inserts', value: 0.88, tone: 'bad' }, badge: { text: 'hot', tone: 'bad' } },
-          s1: { meter: { label: 'inserts', value: 0.12, tone: 'good' } },
-          s2: { meter: { label: 'inserts', value: 0.08, tone: 'good' } },
+          s0: { meter: { label: 'inserts', value: 0.88, tone: 'bad' }, badge: { text: 'hot', tone: 'bad' }, fill: 0.88, focus: true },
+          s1: { meter: { label: 'inserts', value: 0.12, tone: 'good' }, fill: 0.3 },
+          s2: { meter: { label: 'inserts', value: 0.08, tone: 'good' }, fill: 0.27 },
         },
         links: { a0: link('app', 's0', { label: 'studio bulk', labelTone: 'bad', arrow: true }) },
       }),
@@ -239,9 +237,10 @@ export const sharding: Lesson = {
       metrics: { shards: { v: '3 → 4', tone: 'warn' }, scatter: 'same' },
       scene: ledger({
         shards: ['s0', 's1', 's2'],
+        look: { s0: { fill: 0.78 }, s1: { fill: 0.8 }, s2: { fill: 0.76 } },
         extra: {
-          s3: db(50, 0, { label: 'shard 3', sub: 'empty', ghost: true, badge: { text: 'planned', tone: 'info' } }),
-          card: card(40, 18, 'Migration', ['dual-write window', 'backfill jobs', '! weeks of care']),
+          s3: db(50, 0, { label: 'shard 3', sub: 'empty', ghost: true, fill: 0, badge: { text: 'planned', tone: 'info' } }),
+          card: card(56, 14, 'Migration', ['dual-write window', 'backfill jobs', '! weeks of care']),
         },
         app: { sub: 'router v2 pending' },
       }),

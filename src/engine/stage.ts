@@ -1,6 +1,6 @@
 import type { Entity, Flow, Link, PacketKind, Scene } from '../types.ts';
 import { project, rayExit, type Pt } from './iso.ts';
-import { drawEntity, type Geo } from './shapes.ts';
+import { drawEntity, paintFill, type Geo } from './shapes.ts';
 import { svg, textWidth } from './svg.ts';
 
 interface Pose {
@@ -21,6 +21,14 @@ interface LiveEnt {
   from: Pose;
   to: Pose;
   removing: boolean;
+  /** Freshly added: drops in with a small bounce after `delay` ms. */
+  entering: boolean;
+  delay: number;
+  /** A database's tank level, eased between steps. */
+  fillG: SVGGElement | null;
+  fill: { from: number; to: number; now: number };
+  glow: SVGGElement | null;
+  hitTimer: number;
 }
 
 interface LiveLink {
@@ -35,6 +43,9 @@ interface LiveLink {
   toO: number;
   removing: boolean;
   len: number;
+  /** Freshly added: the line draws itself from `from` to `to` after `delay` ms. */
+  entering: boolean;
+  delay: number;
 }
 
 interface Seg {
@@ -50,6 +61,7 @@ interface Packet {
   d: number;
   back: boolean;
   el: SVGCircleElement;
+  trail: SVGCircleElement[];
 }
 
 interface Box {
@@ -61,11 +73,21 @@ interface Box {
 
 const ENTER_LIFT = 1.4;
 const STEP_MS = 750;
+/** Gap between new entities appearing one after another. */
+const STAGGER_MS = 140;
 const PAD = 44;
 const MIN_W = 560;
 const MIN_H = 340;
+/** Distances (px) behind a packet where its fading trail dots sit. */
+const TRAIL = [7, 14];
 
 const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const easeOut = (k: number) => 1 - Math.pow(1 - k, 3);
+const backOut = (k: number) => {
+  const c = 1.4;
+  return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2);
+};
+const clamp01 = (k: number) => Math.max(0, Math.min(1, k));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 const lerpPose = (a: Pose, b: Pose, k: number): Pose => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), z: lerp(a.z, b.z, k), o: lerp(a.o, b.o, k) });
 const lerpBox = (a: Box, b: Box, k: number): Box => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k) });
@@ -87,6 +109,8 @@ export class Stage {
 
   private t0 = 0;
   private dur = 0;
+  /** Duration plus the longest stagger delay: when the whole transition is over. */
+  private span = 0;
   private dirty = false;
 
   private view: Box = { x: -MIN_W / 2, y: -MIN_H / 2, w: MIN_W, h: MIN_H };
@@ -98,6 +122,7 @@ export class Stage {
   private raf = 0;
   private cleanup: (() => void)[] = [];
   private arrowId = `arrow-${++stageCount}`;
+  private focused: string[] = [];
   private breakable = new Set<string>();
   private broken = new Set<string>();
   /** Called when the reader clicks (not drags) a breakable entity. */
@@ -121,6 +146,13 @@ export class Stage {
       [14, 7],
     ])
       svg('circle', { cx: cx!, cy: cy!, r: 1, class: 'grid-dot' }, pat);
+    for (const [id, stops] of [
+      ['ent-shadow', [[0, 0.32], [0.6, 0.12], [1, 0]]],
+      ['focus-glow', [[0, 0.55], [0.45, 0.28], [1, 0]]],
+    ] as const) {
+      const grad = svg('radialGradient', { id, class: `grad-${id}` }, defs);
+      for (const [offset, a] of stops) svg('stop', { offset, 'stop-opacity': a }, grad);
+    }
     svg('rect', { x: -6000, y: -6000, width: 12000, height: 12000, fill: 'url(#iso-dots)' }, this.svg);
     this.layers = {
       links: svg('g', { class: 'layer-links' }, this.svg),
@@ -170,38 +202,71 @@ export class Stage {
   /** Transition to a new scene. `jumpCamera` snaps the view instead of easing it. */
   setScene(scene: Scene, opts: { jumpCamera?: boolean } = {}) {
     this.scene = scene;
+    this.dur = reducedMotion() ? 0 : STEP_MS;
     const ids = new Set(Object.keys(scene.entities));
 
     for (const live of this.ents.values()) {
       if (ids.has(live.id) || live.removing) continue;
       live.removing = true;
+      live.entering = false;
+      live.delay = 0;
+      live.inner.removeAttribute('transform');
       live.from = { ...live.pos };
       live.to = { ...live.pos, z: live.pos.z + ENTER_LIFT, o: 0 };
     }
 
+    let order = 0;
+    let maxDelay = 0;
+    const firstScene = ![...this.ents.values()].some((l) => !l.removing);
+    const touched: string[] = [];
     for (const [id, e] of Object.entries(scene.entities)) {
       const to: Pose = { x: e.x, y: e.y, z: e.z ?? 0, o: 1 };
       let live = this.ents.get(id);
+      const prev = live && !live.removing ? live.e : undefined;
       if (!live) {
         const g = svg('g', { 'data-ent': id }, this.layers.ents);
         const inner = svg('g', {}, g);
         const start = { ...to, z: to.z + ENTER_LIFT, o: 0 };
-        live = { id, e, sig: '', g, inner, geo: { hull: [], center: [0, 0] }, pos: start, from: start, to, removing: false };
+        const delay = this.dur ? order++ * STAGGER_MS : 0;
+        live = {
+          id, e, sig: '', g, inner, geo: { hull: [], center: [0, 0], foot: null }, pos: start, from: start, to,
+          removing: false, entering: !!this.dur, delay, fillG: null, fill: { from: 0, to: 0, now: 0 }, glow: null, hitTimer: 0,
+        };
         this.ents.set(id, live);
+      } else if (!live.removing) {
+        live.entering = false;
+        live.delay = 0;
+        live.inner.removeAttribute('transform');
+      } else {
+        // Coming back while it was fading out: treat it as a fresh entrance.
+        live.entering = !!this.dur;
+        live.delay = this.dur ? order++ * STAGGER_MS : 0;
       }
+      maxDelay = Math.max(maxDelay, live.delay);
       live.removing = false;
       live.e = e;
-      const { x: _x, y: _y, z: _z, ...look } = e;
-      const sig = JSON.stringify(look);
+      // The tank level animates in place, so only whether there is one forces a redraw.
+      const { x: _x, y: _y, z: _z, fill, focus: _f, ...look } = e;
+      const sig = JSON.stringify({ ...look, tank: fill !== undefined });
       if (sig !== live.sig) {
+        const grew = prev?.kind === 'server' && e.kind === 'server' && (e.count ?? 0) > (prev.count ?? 0);
         live.sig = sig;
         live.inner.replaceChildren();
-        live.geo = drawEntity(live.inner, e);
+        live.geo = drawEntity(live.inner, e, grew ? { newFrom: prev.count ?? 0 } : {});
+        live.fillG = live.inner.querySelector<SVGGElement>('.db-fill');
+        if (prev && e.kind !== 'card') touched.push(id);
       }
+      if (!prev && e.kind !== 'card') touched.push(id);
+      const target = fill ?? 0;
+      if (prev && target !== live.fill.to) touched.push(id);
+      // A database starts empty and fills up as it appears.
+      live.fill = { from: prev ? live.fill.now : 0, to: target, now: prev ? live.fill.now : 0 };
+      if (live.fillG) paintFill(live.fillG, live.fill.now);
       this.applyEntClass(live);
       live.from = { ...live.pos };
       live.to = to;
     }
+    this.applyFocus(scene, firstScene ? [] : touched);
 
     const links = scene.links ?? {};
     for (const link of this.links.values()) {
@@ -227,12 +292,18 @@ export class Stage {
           svg('text', { x: 0, y: 0, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, label).textContent = l.label;
         }
         const o = live?.o ?? 0;
-        live = { id, l, g, path, label, labelSize, o, fromO: o, toO: 1, removing: false, len: 0 };
+        live = { id, l, g, path, label, labelSize, o, fromO: o, toO: 1, removing: false, len: 0, entering: false, delay: 0 };
         this.links.set(id, live);
       }
       live.removing = false;
       live.fromO = live.o;
       live.toO = 1;
+      // A line that isn't visible yet draws itself once both of its ends have landed.
+      const ends = [this.ents.get(l.from), this.ents.get(l.to)];
+      const endDelay = Math.max(...ends.map((e) => (e?.entering ? e.delay + this.dur * 0.55 : 0)));
+      live.entering = !!this.dur && live.o < 0.05;
+      live.delay = live.entering ? endDelay : 0;
+      maxDelay = Math.max(maxDelay, live.delay);
     }
 
     this.applyArrows(scene);
@@ -240,9 +311,9 @@ export class Stage {
     this.flows = (scene.flows ?? []).map((flow) => ({ flow, acc: Math.random() }));
 
     this.t0 = performance.now();
-    this.dur = reducedMotion() ? 0 : STEP_MS;
+    this.span = this.dur ? this.dur + maxDelay : 0;
     this.dirty = true;
-    this.update(this.dur ? 0 : 1);
+    this.update(this.dur ? 0 : Infinity);
 
     this.manual = false;
     const target = this.targetView(!opts.jumpCamera);
@@ -253,6 +324,60 @@ export class Stage {
     } else {
       this.animateView(target, STEP_MS + 100);
     }
+  }
+
+  /**
+   * A soft neon pool under whatever the step is about: entities marked `focus`, or else the few
+   * that this step added or changed.
+   */
+  private applyFocus(scene: Scene, touched: string[]) {
+    const marked = Object.entries(scene.entities).filter(([, e]) => e.focus).map(([id]) => id);
+    // Newcomers are the clearest subject; otherwise whatever changed, unless half the stage did.
+    const fresh = touched.filter((id) => this.ents.get(id)?.entering);
+    const auto = [...new Set(fresh.length ? fresh : touched)];
+    const want = new Set(marked.length ? marked : auto.length <= 4 ? auto : []);
+    this.focused = [...want];
+    for (const live of this.ents.values()) {
+      const foot = live.geo.foot;
+      const on = want.has(live.id) && !live.removing && !live.e.ghost && !!foot;
+      if (!on) {
+        const old = live.glow;
+        live.glow = null;
+        if (old) {
+          if (this.dur) old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, easing: 'ease-out' }).onfinish = () => old.remove();
+          else old.remove();
+        }
+        continue;
+      }
+      if (!live.glow) {
+        live.glow = svg('g', { class: 'focus-glow' }, live.g);
+        live.g.insertBefore(live.glow, live.inner);
+        live.glow.style.animationDelay = `${live.delay + this.dur * 0.4}ms`;
+        svg('ellipse', { class: 'fg-pool', fill: 'url(#focus-glow)' }, live.glow);
+        svg('ellipse', { class: 'fg-ring' }, live.glow);
+        svg('ellipse', { class: 'fg-ring fg-wave' }, live.glow);
+      }
+      const [pool, ring, wave] = [...live.glow.children] as SVGEllipseElement[];
+      const size = (el: SVGEllipseElement | undefined, k: number) => {
+        el?.setAttribute('cx', foot.cx.toFixed(1));
+        el?.setAttribute('cy', '2');
+        el?.setAttribute('rx', (foot.rx * k).toFixed(1));
+        el?.setAttribute('ry', (foot.rx * k * 0.5).toFixed(1));
+      };
+      size(pool, 2);
+      size(ring, 1.2);
+      size(wave, 1.2);
+    }
+  }
+
+  /** Activity LEDs flash in the colour of the packet that just arrived. */
+  private hit(id: string, kind: PacketKind) {
+    const live = this.ents.get(id);
+    if (!live || live.removing) return;
+    live.g.style.setProperty('--hit', `var(--p-${kind})`);
+    live.g.classList.add('is-hit');
+    clearTimeout(live.hitTimer);
+    live.hitTimer = window.setTimeout(() => live.g.classList.remove('is-hit'), 160);
   }
 
   /** Arrowheads follow the traffic: a link used in both directions gets one at each end. */
@@ -283,7 +408,10 @@ export class Stage {
     }
     this.ents.clear();
     this.links.clear();
+    const focused = this.focused;
     this.setScene(this.scene);
+    // Replaying redraws everything from empty; keep the glow on what the step was about.
+    this.applyFocus(this.scene, focused);
   }
 
   fit() {
@@ -295,9 +423,9 @@ export class Stage {
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     if (this.dirty) {
-      const k = this.dur ? Math.min(1, (now - this.t0) / this.dur) : 1;
-      this.update(k);
-      if (k >= 1) this.dirty = false;
+      const elapsed = now - this.t0;
+      this.update(elapsed);
+      if (elapsed >= this.span) this.dirty = false;
     }
     if (this.cam) {
       const k = Math.min(1, (now - this.cam.t0) / this.cam.dur);
@@ -309,10 +437,30 @@ export class Stage {
     this.raf = requestAnimationFrame(this.tick);
   };
 
-  private update(k: number) {
-    const ek = easeInOut(k);
+  /** Advance the scene transition to `elapsed` ms after `setScene`. */
+  private update(elapsed: number) {
+    const local = (delay: number) => (this.dur ? clamp01((elapsed - delay) / this.dur) : 1);
     for (const live of this.ents.values()) {
-      live.pos = lerpPose(live.from, live.to, ek);
+      const k = local(live.delay);
+      if (live.entering) {
+        // Drop in with a small bounce on landing, and grow out of the ground.
+        const kz = backOut(k);
+        live.pos = {
+          x: lerp(live.from.x, live.to.x, easeOut(k)),
+          y: lerp(live.from.y, live.to.y, easeOut(k)),
+          z: lerp(live.from.z, live.to.z, kz),
+          o: lerp(live.from.o, live.to.o, easeOut(Math.min(1, k * 1.8))),
+        };
+        const s = lerp(0.8, 1, kz);
+        if (k >= 1) {
+          live.entering = false;
+          live.inner.removeAttribute('transform');
+        } else live.inner.setAttribute('transform', `scale(${s.toFixed(3)})`);
+      } else live.pos = lerpPose(live.from, live.to, easeInOut(k));
+      if (live.fillG && live.fill.now !== live.fill.to) {
+        live.fill.now = k >= 1 ? live.fill.to : lerp(live.fill.from, live.fill.to, easeInOut(k));
+        paintFill(live.fillG, live.fill.now);
+      }
       const [px, py] = project(live.pos.x, live.pos.y, live.pos.z);
       live.g.setAttribute('transform', `translate(${px.toFixed(2)} ${py.toFixed(2)})`);
       live.g.style.opacity = live.pos.o.toFixed(3);
@@ -323,14 +471,16 @@ export class Stage {
     }
     this.sortDepth();
     for (const link of this.links.values()) {
-      link.o = lerp(link.fromO, link.toO, ek);
+      const k = local(link.delay);
+      link.o = lerp(link.fromO, link.toO, link.entering ? easeOut(Math.min(1, k * 2.5)) : easeInOut(k));
       if (link.removing && k >= 1) {
         link.g.remove();
         link.label?.remove();
         this.links.delete(link.id);
         continue;
       }
-      this.layoutLink(link);
+      this.layoutLink(link, link.entering ? k : 1);
+      if (link.entering && k >= 1) link.entering = false;
     }
   }
 
@@ -347,7 +497,8 @@ export class Stage {
     return project(e.pos.x, e.pos.y, e.pos.z);
   }
 
-  private layoutLink(link: LiveLink) {
+  /** `draw` (0–1) is how much of a newly added line is drawn, from its `from` end. */
+  private layoutLink(link: LiveLink, draw = 1) {
     const a = this.ents.get(link.l.from);
     const b = this.ents.get(link.l.to);
     if (!a || !b) {
@@ -380,7 +531,15 @@ export class Stage {
     link.len = link.path.getTotalLength();
     const opacity = (link.o * Math.min(a.pos.o, b.pos.o)).toFixed(3);
     link.g.style.opacity = opacity;
-    if (link.label) link.label.style.opacity = opacity;
+    if (draw < 1 && !link.l.dashed) {
+      const shown = link.len * easeInOut(draw);
+      link.path.style.strokeDasharray = `${shown.toFixed(1)} ${link.len.toFixed(1)}`;
+    } else link.path.style.removeProperty('stroke-dasharray');
+    // Arrowheads wait until the line has reached them.
+    link.g.classList.toggle('is-drawing', draw < 0.92);
+    // Pills pop in once the line is mostly drawn.
+    const pop = draw < 1 ? backOut(clamp01((draw - 0.55) / 0.45)) : 1;
+    if (link.label) link.label.style.opacity = (Number(opacity) * clamp01(pop)).toFixed(3);
     if (link.label) {
       // Sit the pill beside the line, never on it: push it along the normal (upper side) just far
       // enough that the rectangle clears the line at any angle.
@@ -396,15 +555,27 @@ export class Stage {
       }
       const [w, h] = link.labelSize;
       const off = Math.abs(nx) * (w / 2) + Math.abs(ny) * (h / 2) + 5;
-      link.label.setAttribute('transform', `translate(${(m.x + nx * off).toFixed(1)} ${(m.y + ny * off).toFixed(1)})`);
+      const scale = pop < 1 ? ` scale(${Math.max(0.01, pop).toFixed(3)})` : '';
+      link.label.setAttribute('transform', `translate(${(m.x + nx * off).toFixed(1)} ${(m.y + ny * off).toFixed(1)})${scale}`);
     }
   }
 
   // ── packets ────────────────────────────────────────────────
 
   private clearPackets() {
-    for (const p of this.packets) p.el.remove();
+    for (const p of this.packets) this.removePacket(p);
     this.packets = [];
+  }
+
+  private removePacket(p: Packet) {
+    p.el.remove();
+    for (const t of p.trail) t.remove();
+  }
+
+  private setPacketKind(p: Packet, kind: PacketKind) {
+    p.kind = kind;
+    p.el.setAttribute('class', `pkt pkt-${kind}`);
+    for (const t of p.trail) t.setAttribute('class', `pkt-trail pkt-${kind}`);
   }
 
   private spawn(flow: Flow) {
@@ -412,13 +583,17 @@ export class Stage {
     for (const id of flow.route) {
       const rev = id.startsWith('~');
       const link = this.links.get(rev ? id.slice(1) : id);
-      if (!link || link.removing) return;
+      // No traffic on lines that are still drawing themselves in.
+      if (!link || link.removing || (link.entering && link.o < 0.9)) return;
       segs.push({ link, rev });
     }
     if (!segs.length) return;
     const kind = flow.kind ?? 'req';
-    const el = svg('circle', { r: 4.2, class: `pkt pkt-${kind}` }, this.layers.packets);
-    this.packets.push({ flow, kind, segs, i: 0, d: 0, back: false, el });
+    const trail = TRAIL.map((_, j) =>
+      svg('circle', { r: (3.4 - j * 1).toFixed(1), class: `pkt-trail pkt-${kind}`, opacity: j ? 0.18 : 0.34, cx: -9999, cy: -9999 }, this.layers.packets),
+    );
+    const el = svg('circle', { r: 4.2, class: `pkt pkt-${kind}`, cx: -9999, cy: -9999 }, this.layers.packets);
+    this.packets.push({ flow, kind, segs, i: 0, d: 0, back: false, el, trail });
   }
 
   private stepPackets(dt: number) {
@@ -443,6 +618,7 @@ export class Stage {
           dead = true;
           break;
         }
+        this.hit(reached(seg), p.kind);
         p.d -= seg.link.len;
         p.i++;
         if (p.i >= p.segs.length) break;
@@ -463,20 +639,25 @@ export class Stage {
           p.segs = p.segs.map((s) => ({ link: s.link, rev: !s.rev })).reverse();
           p.i = 0;
           p.d = 0;
-          p.kind = p.flow.returnKind ?? 'res';
-          p.el.setAttribute('class', `pkt pkt-${p.kind}`);
+          this.setPacketKind(p, p.flow.returnKind ?? 'res');
         } else {
           done.push(p);
         }
         continue;
       }
-      const L = seg.link.len;
-      const pt = seg.link.path.getPointAtLength(seg.rev ? L - p.d : p.d);
+      const pt = pointAt(seg, p.d);
       p.el.setAttribute('cx', pt.x.toFixed(2));
       p.el.setAttribute('cy', pt.y.toFixed(2));
+      p.trail.forEach((t, j) => {
+        const back = TRAIL[j]!;
+        // Hide trail dots that would sit behind the start of the current segment.
+        const tp = p.d > back ? pointAt(seg, p.d - back) : null;
+        t.setAttribute('cx', tp ? tp.x.toFixed(2) : '-9999');
+        t.setAttribute('cy', tp ? tp.y.toFixed(2) : '-9999');
+      });
     }
     if (done.length) {
-      for (const p of done) p.el.remove();
+      for (const p of done) this.removePacket(p);
       this.packets = this.packets.filter((p) => !done.includes(p));
     }
   }

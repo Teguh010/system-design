@@ -14,7 +14,7 @@ const overlay: LessonOverlay = {
   ],
   labels: {
     'hot shard': 'shard panas',
-    metadata: 'metadata',
+    insert: 'insert',
     uploaders: 'pengunggah',
     '400k/day': '400 rb/hari',
     'metadata API': 'API metadata',
@@ -23,7 +23,6 @@ const overlay: LessonOverlay = {
     Postgres: 'Postgres',
     'all rows': 'semua baris',
     leader: 'leader',
-    disk: 'disk',
     Growth: 'Pertumbuhan',
     'disk 92% full': 'disk 92% penuh',
     '12k writes/s': '12 ribu tulis/dtk',

@@ -94,7 +94,7 @@ export const replication: Lesson = {
     { id: 'reads', label: 'reads on primary' },
     { id: 'failover', label: 'leader lost →' },
   ],
-  legend: ['req', 'res', 'write', ['slow', 'stale read']],
+  legend: ['req', 'res', 'write', ['slow', 'stale read'], 'fail'],
   goals: [
     { text: 'Send writes to one leader and reads elsewhere', step: 3 },
     { text: 'See stale data when replication lags', step: 5 },

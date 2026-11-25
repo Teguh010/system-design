@@ -93,7 +93,8 @@ export const sqlNosql: Lesson = {
         look: { sql: { badge: { text: 'B12 free ×2', tone: 'bad' }, meter: { label: 'writes', value: 0.85, tone: 'warn' } } },
         flows: [
           { route: ['ua', 'as'], kind: 'write', rate: 1.1, bounce: true, returnKind: 'res' },
-          { route: ['ua', 'as'], kind: 'write', rate: 1.1, bounce: true, returnKind: 'res' },
+          // Both inserts succeed; the second one double-books the seat, so it comes back as the race.
+          { route: ['ua', 'as'], kind: 'write', rate: 1.1, bounce: true, returnKind: 'fail' },
         ],
       }),
     },

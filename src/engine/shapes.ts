@@ -6,7 +6,17 @@ import { svg, textWidth } from './svg.ts';
 export interface Geo {
   hull: Pt[];
   center: Pt;
+  /** Ground footprint as a 2:1 ellipse centred at (cx, 0): where shadows and focus glows sit. */
+  foot: { cx: number; rx: number } | null;
 }
+
+export interface DrawOpts {
+  /** Rack units from this index up are new since the last step and drop in. */
+  newFrom?: number;
+}
+
+/** Pseudo-random but stable LED timing, so a rack blinks the same way on every replay. */
+const blink = (i: number) => `--d:${((i * 7919) % 29) / 10}s;--p:${1.6 + ((i * 104729) % 17) / 10}s`;
 
 type G = SVGGElement;
 
@@ -111,15 +121,81 @@ function icon(g: G, name: IconName, cx: number, cy: number, s: number) {
   ICONS[name](grp);
 }
 
-function drawShape(g: G, e: Entity): { points: Pt[]; h: number } {
+function led(g: G, at: Pt, i: number, act = false) {
+  svg('circle', { cx: at[0], cy: at[1], r: 1.6, class: act ? 'led led-act' : 'led', style: blink(i) }, g);
+}
+
+const UNIT_H = 0.62;
+const UNIT_GAP = 0.08;
+
+/** `n` rack units stacked on each other, each with vents, a status LED and an activity LED. */
+function rack(g: G, n: number, newFrom: number): Pt[] {
+  const points: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const z = i * (UNIT_H + UNIT_GAP);
+    const isNew = i >= newFrom;
+    const u = svg('g', { class: isNew ? 'unit is-new' : 'unit', style: `--j:${i - newFrom}` }, g);
+    points.push(...box(u, 2, 2, UNIT_H, z));
+    for (const t of [0.22, 0.4]) line(u, project(-0.8, -1, z + UNIT_H * t + 0.1), project(0.1, -1, z + UNIT_H * t + 0.1));
+    led(u, project(0.45, -1, z + UNIT_H / 2), i * 2);
+    led(u, project(0.72, -1, z + UNIT_H / 2), i * 2 + 1, true);
+  }
+  return points;
+}
+
+/** Tank level drawn over the front of a cylinder, from the bottom up to `fill`. */
+export function paintFill(g: SVGGElement, fill: number) {
+  const rx = Number(g.dataset.rx);
+  const ry = Number(g.dataset.ry);
+  const H = Number(g.dataset.h);
+  const f = Math.max(0, Math.min(1, fill));
+  const L = H * f;
+  const tone = f >= 0.85 ? 'bad' : f >= 0.6 ? 'warn' : 'good';
+  g.setAttribute('class', `db-fill tone-${tone}${f >= 0.95 ? ' is-full' : ''}`);
+  g.replaceChildren();
+  if (f <= 0.005) return;
+  svg('path', { d: `M ${-rx} ${-L} L ${-rx} 0 A ${rx} ${ry} 0 0 0 ${rx} 0 L ${rx} ${-L} A ${rx} ${ry} 0 0 1 ${-rx} ${-L} Z`, class: 'db-liquid' }, g);
+  svg('path', { d: `M ${-rx} ${-L} A ${rx} ${ry} 0 0 0 ${rx} ${-L}`, class: 'db-level' }, g);
+}
+
+function tank(g: G, r: number, h: number, fill: number | undefined): Pt[] {
+  const rx = 14 * Math.SQRT2 * r;
+  const ry = 7 * Math.SQRT2 * r;
+  const H = 14 * h;
+  svg('path', { d: `M ${-rx} ${-H} L ${-rx} 0 A ${rx} ${ry} 0 0 0 ${rx} 0 L ${rx} ${-H} Z`, class: 'face f-l' }, g);
+  svg('path', { d: `M 0 ${ry - H} L 0 ${ry} A ${rx} ${ry} 0 0 0 ${rx} 0 L ${rx} ${-H} A ${rx} ${ry} 0 0 1 0 ${ry - H} Z`, class: 'face f-r' }, g);
+  if (fill !== undefined) {
+    const lvl = svg('g', { 'data-rx': rx, 'data-ry': ry, 'data-h': H }, g);
+    paintFill(lvl, fill);
+  }
+  // Disk platters: each band lights up in turn while the database is being read.
+  for (let i = 1; i <= 2; i++) {
+    const y = -H + (H * i) / 3;
+    svg('path', { d: `M ${-rx} ${y} A ${rx} ${ry} 0 0 0 ${rx} ${y}`, class: 'deco band', style: `--b:${i}` }, g);
+  }
+  svg('ellipse', { cx: 0, cy: -H, rx, ry, class: 'face f-top' }, g);
+  led(g, [rx * 0.62, ry * 0.78 - H * 0.12], 3, true);
+  const out: Pt[] = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    out.push([rx * Math.cos(a), ry * Math.sin(a)], [rx * Math.cos(a), -H + ry * Math.sin(a)]);
+  }
+  return out;
+}
+
+function drawShape(g: G, e: Entity, opts: DrawOpts): { points: Pt[]; h: number } {
   switch (e.kind) {
     case 'client':
       return { points: laptop(g), h: 1.2 };
     case 'server': {
+      if (e.count !== undefined) {
+        const n = Math.max(1, Math.min(5, Math.round(e.count)));
+        return { points: rack(g, n, opts.newFrom ?? n), h: n * (UNIT_H + UNIT_GAP) - UNIT_GAP };
+      }
       const h = 2.4;
       const p = box(g, 2, 2, h);
       for (const z of [0.8, 1.6]) line(g, project(-0.8, -1, z), project(0.8, -1, z));
-      for (const z of [0.4, 1.2, 2.0]) svg('circle', { cx: project(0.6, -1, z)[0], cy: project(0.6, -1, z)[1], r: 1.6, class: 'led' }, g);
+      [0.4, 1.2, 2.0].forEach((z, i) => led(g, project(0.6, -1, z), i, i === 0));
       return { points: p, h };
     }
     case 'service': {
@@ -188,7 +264,7 @@ function drawShape(g: G, e: Entity): { points: Pt[]; h: number } {
     }
     case 'db': {
       const h = 1.8;
-      return { points: cylinder(g, 1.05, h, 0, 0, 2), h };
+      return { points: tank(g, 1.05, h, e.fill), h };
     }
     case 'user': {
       const n = Math.max(1, Math.min(3, e.count ?? 3));
@@ -266,7 +342,7 @@ function meter(g: G, m: NonNullable<Entity['meter']>, cy: number): number {
   return w;
 }
 
-function drawCard(g: G, e: Entity): Geo {
+function drawCard(g: G, e: Entity): Omit<Geo, 'foot'> {
   const lines = e.lines ?? [];
   const title = e.title ?? '';
   const w = Math.max(textWidth(title, 12, 700), ...lines.map((l) => textWidth(l.replace(/^[!✓#] /, ''), 11))) + 28;
@@ -296,17 +372,21 @@ function drawCard(g: G, e: Entity): Geo {
 }
 
 /** Draws an entity into `g` (local space) and returns its outline for link clipping. */
-export function drawEntity(g: G, e: Entity): Geo {
-  if (e.kind === 'card') return drawCard(g, e);
+export function drawEntity(g: G, e: Entity, opts: DrawOpts = {}): Geo {
+  if (e.kind === 'card') return { ...drawCard(g, e), foot: null };
   const k = e.size ?? 1;
   const sg = k === 1 ? g : svg('g', { transform: `scale(${k})` }, g);
-  const { points: raw, h } = drawShape(sg, e);
+  const { points: raw, h } = drawShape(sg, e, opts);
   if (e.icon) {
     const [cx, cy] = project(0, 0, h);
     icon(sg, e.icon, cx, cy, e.kind === 'db' ? 0.62 : 0.8);
   }
   const points = raw.map(([x, y]): Pt => [x * k, y * k]);
   const shape = convexHull(points);
+  const xs = shape.map((p) => p[0]);
+  const foot = { cx: (Math.min(...xs) + Math.max(...xs)) / 2, rx: (Math.max(...xs) - Math.min(...xs)) / 2 };
+  // A soft contact shadow so shapes sit on the floor instead of floating over it.
+  g.insertBefore(svg('ellipse', { cx: foot.cx, cy: 2, rx: foot.rx * 1.08, ry: foot.rx * 0.54, class: 'ent-shadow' }), g.firstChild);
   const ys = shape.map((p) => p[1]);
   const top = Math.min(...ys);
   const bottom = Math.max(...ys);
@@ -325,5 +405,5 @@ export function drawEntity(g: G, e: Entity): Geo {
   }
   const badge = e.badge ?? (e.down ? { text: 'DOWN', tone: 'bad' as const } : undefined);
   if (badge) box(pill(g, badge.text, above, `badge tone-${badge.tone ?? 'info'}`, 10), above - 9, above + 9);
-  return { hull: convexHull([...points, ...extra]), center: project(0, 0, (h * k) / 2) };
+  return { hull: convexHull([...points, ...extra]), center: project(0, 0, (h * k) / 2), foot };
 }

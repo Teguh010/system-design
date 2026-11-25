@@ -54,7 +54,7 @@ export const stateless: Lesson = {
     { id: 'failover', label: 'server dies →' },
     { id: 'scale', label: 'add a server' },
   ],
-  legend: ['req', 'res', ['fail', 'lost session']],
+  legend: ['req', 'res', 'write', ['fail', 'lost session']],
   goals: [
     { text: 'Spot state hiding in a web server', step: 1 },
     { text: 'See why sticky sessions only half work', step: 3 },

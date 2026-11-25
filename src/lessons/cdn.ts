@@ -52,7 +52,7 @@ export const cdns: Lesson = {
     { id: 'origin', label: 'origin req / s' },
     { id: 'egress', label: 'origin egress' },
   ],
-  legend: ['req', 'res', ['slow', 'edge miss → origin'], 'fail'],
+  legend: ['req', 'res', ['slow', 'edge miss → origin'], ['poison', 'poisoned cache'], 'fail'],
   goals: [
     { text: 'Why distance dominates for far-away users', step: 1 },
     { text: 'How edges serve cached copies', step: 2 },

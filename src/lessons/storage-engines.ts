@@ -103,7 +103,8 @@ export const storageEngines: Lesson = {
       scene: pipeline('btree', {
         look: { store: { meter: { label: 'page writes', value: 0.9, tone: 'bad' }, badge: { text: 'splits', tone: 'bad' } } },
         links: { is: link('ingest', 'store', { label: 'INSERT row', labelTone: 'bad', arrow: true }) },
-        flows: [{ route: ['wi', 'is'], kind: 'write', rate: 2.8, bounce: true, returnKind: 'res' }],
+        // Acks crawl back: every insert waits on scattered page writes.
+        flows: [{ route: ['wi', 'is'], kind: 'write', rate: 2.8, bounce: true, returnKind: 'slow', speed: 90 }],
       }),
     },
     {

@@ -44,7 +44,7 @@ export const loadBalancing: Lesson = {
     { id: 'healthy', label: 'healthy servers' },
     { id: 'p99', label: 'p99 latency' },
   ],
-  legend: ['req', 'res', ['slow', 'heavy request'], ['ping', 'health check'], 'fail'],
+  legend: ['req', 'res', 'write', ['slow', 'heavy request'], ['ping', 'health check'], 'fail'],
   goals: [
     { text: 'What a load balancer does', step: 1 },
     { text: 'Round robin vs least connections', step: 2 },
