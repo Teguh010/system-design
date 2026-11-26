@@ -115,3 +115,42 @@ export function enrichGlossary(html: string): string {
 export function glossaryDefinition(entry: GlossaryEntry, locale: 'en' | 'id'): string {
   return entry.definition[locale];
 }
+
+export function glossaryExpansion(entry: GlossaryEntry, locale: 'en' | 'id'): string | undefined {
+  return entry.expansion?.[locale];
+}
+
+/** Short surface form for stage list, e.g. TCP, DNS, N+1. */
+export function glossaryAbbrevLabel(entry: GlossaryEntry): string {
+  const caps = entry.match.find((m) => /^[A-Z0-9][A-Z0-9+./-]*$/.test(m));
+  if (caps) return caps;
+  const short = entry.match.find((m) => m.length <= 12);
+  return short ?? entry.match[0] ?? entry.id;
+}
+
+/** Glossary entries (with expansion) mentioned in prose HTML, in order of first appearance. */
+export function glossaryInProse(...chunks: string[]): GlossaryEntry[] {
+  const plain = chunks.join(' ').replace(/<[^>]+>/g, ' ');
+  if (!plain.trim()) return [];
+  const hits: { index: number; id: string }[] = [];
+  for (const rule of matchRules) {
+    const entry = glossaryById.get(rule.id);
+    if (!entry?.expansion) continue;
+    rule.re.lastIndex = 0;
+    const m = rule.re.exec(plain);
+    if (m?.index !== undefined) hits.push({ index: m.index, id: rule.id });
+    rule.re.lastIndex = 0;
+  }
+  hits.sort((a, b) => a.index - b.index);
+  const seen = new Set<string>();
+  const out: GlossaryEntry[] = [];
+  for (const h of hits) {
+    if (seen.has(h.id)) continue;
+    const e = glossaryById.get(h.id);
+    if (e) {
+      seen.add(h.id);
+      out.push(e);
+    }
+  }
+  return out;
+}

@@ -38,7 +38,7 @@ export const course: CourseModule[] = [
     title: { en: 'Foundations', id: 'Dasar-dasar' },
     color: '#d9b77a',
     lessons: [
-      ready(requestLifecycle, 'Perjalanan Sebuah Request'),
+      ready(requestLifecycle, 'Bagaimana sebuah request bekerja?'),
       ready(latencyThroughput, 'Latency & Throughput'),
       ready(napkinMath, 'Hitungan Kasar (Napkin Math)'),
     ],

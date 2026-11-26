@@ -3,6 +3,8 @@ import type { Locale } from '../i18n/index.ts';
 export type GlossaryEntry = {
   id: string;
   match: string[];
+  /** Full phrase for acronyms (shown in the tooltip above the definition). */
+  expansion?: Record<Locale, string>;
   definition: Record<Locale, string>;
   lessonId?: string;
   step?: number;
@@ -12,6 +14,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'rtt',
     match: ['round-trip time', 'round trips', 'round trip', 'round-trip', 'RTT'],
+    expansion: {
+      en: 'Round-Trip Time',
+      id: 'Waktu bolak-balik (Round-Trip Time)',
+    },
     definition: {
       en: 'Time for a signal to go to the server and back once — the unit of network delay.',
       id: 'Waktu sinyal pergi ke server dan kembali sekali — satuan delay jaringan.',
@@ -22,6 +28,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'dns',
     match: ['DNS', 'DNS lookup', 'DNS lookups'],
+    expansion: {
+      en: 'Domain Name System',
+      id: 'Sistem Nama Domain (Domain Name System)',
+    },
     definition: {
       en: 'Turns a hostname into an IP address before any HTTP traffic can start.',
       id: 'Mengubah hostname jadi alamat IP sebelum trafik HTTP bisa mulai.',
@@ -32,6 +42,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'ttl',
     match: ['TTL'],
+    expansion: {
+      en: 'Time To Live',
+      id: 'Waktu hidup (Time To Live)',
+    },
     definition: {
       en: 'How long a DNS or cache answer may be reused before it must be refreshed.',
       id: 'Berapa lama jawaban DNS atau cache boleh dipakai lagi sebelum di-refresh.',
@@ -42,9 +56,13 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'tcp',
     match: ['TCP'],
+    expansion: {
+      en: 'Transmission Control Protocol',
+      id: 'Protokol Kontrol Transmisi (Transmission Control Protocol)',
+    },
     definition: {
       en: 'Reliable transport; the browser opens it before sending HTTP, costing at least one round trip.',
-      id: 'Transport andal; browser membukanya sebelum HTTP, minimal satu round trip.',
+      id: 'Transport Layer; browser membukanya sebelum HTTP, minimal satu round trip.',
     },
     lessonId: 'request-lifecycle',
     step: 3,
@@ -52,6 +70,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'tls',
     match: ['TLS'],
+    expansion: {
+      en: 'Transport Layer Security',
+      id: 'Keamanan Lapisan Transport (Transport Layer Security)',
+    },
     definition: {
       en: 'Encrypts the connection and proves the server’s identity — another round trip with TLS 1.3.',
       id: 'Mengenkripsi koneksi dan membuktikan identitas server — satu round trip lagi dengan TLS 1.3.',
@@ -62,6 +84,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'ttfb',
     match: ['time to first byte', 'TTFB'],
+    expansion: {
+      en: 'Time To First Byte',
+      id: 'Waktu sampai byte pertama (Time To First Byte)',
+    },
     definition: {
       en: 'When the first response byte arrives: DNS + handshakes + request trip + server work.',
       id: 'Saat byte respons pertama tiba: DNS + handshake + perjalanan request + kerja server.',
@@ -72,6 +98,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'http',
     match: ['HTTP request', 'HTTP'],
+    expansion: {
+      en: 'Hypertext Transfer Protocol',
+      id: 'Protokol Transfer Hiperteks (Hypertext Transfer Protocol)',
+    },
     definition: {
       en: 'Text commands (method, path, headers) sent over an open TCP/TLS connection.',
       id: 'Perintah teks (method, path, header) dikirim lewat koneksi TCP/TLS yang sudah terbuka.',
@@ -82,6 +112,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'n-plus-one',
     match: ['N+1 query', 'N+1'],
+    expansion: {
+      en: '“One query plus N more” (classic ORM loop)',
+      id: '“Satu query plus N lagi” (loop ORM klasik)',
+    },
     definition: {
       en: 'One query becomes many (often one per row) because the app loads related data in a loop.',
       id: 'Satu query memecah jadi banyak (sering satu per baris) karena app memuat data terkait di loop.',
@@ -172,6 +206,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'cdn',
     match: ['CDN'],
+    expansion: {
+      en: 'Content Delivery Network',
+      id: 'Jaringan Pengiriman Konten (Content Delivery Network)',
+    },
     definition: {
       en: 'Edge caches placed near users so static bytes travel a shorter distance.',
       id: 'Cache di edge dekat user supaya byte statis menempuh jarak lebih pendek.',
@@ -242,6 +280,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'lsm',
     match: ['LSM tree', 'LSM', 'log-structured merge tree'],
+    expansion: {
+      en: 'Log-Structured Merge (tree)',
+      id: 'Log-Structured Merge (pohon LSM)',
+    },
     definition: {
       en: 'Buffers sorted writes in memory, flushes immutable files, merges them in the background — built for append-heavy ingest.',
       id: 'Buffer tulis terurut di memori, flush file immutable, merge di background — untuk ingest yang didominasi append.',
@@ -332,6 +374,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'acid',
     match: ['ACID', 'transaction', 'transactions'],
+    expansion: {
+      en: 'Atomicity, Consistency, Isolation, Durability',
+      id: 'Atomisitas, Konsistensi, Isolasi, Durabilitas (ACID)',
+    },
     definition: {
       en: 'Atomic, consistent, isolated, durable updates — a relational DB can commit several row changes together.',
       id: 'Update atomik, konsisten, terisolasi, dan durable — DB relasional bisa commit beberapa perubahan baris sekaligus.',
@@ -342,6 +388,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'nosql',
     match: ['NoSQL', 'document store', 'document database'],
+    expansion: {
+      en: 'Not Only SQL (flexible / distributed data stores)',
+      id: 'Bukan Hanya SQL (penyimpanan data fleksibel / terdistribusi)',
+    },
     definition: {
       en: 'Stores tuned for flexible documents or simple keys — trading strict joins for scale or schema freedom.',
       id: 'Store yang dioptimalkan untuk dokumen fleksibel atau key sederhana — menukar join ketat dengan skala atau kebebasan skema.',
@@ -382,6 +432,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'rpo',
     match: ['RPO', 'recovery point objective'],
+    expansion: {
+      en: 'Recovery Point Objective',
+      id: 'Tujuan titik pemulihan (Recovery Point Objective)',
+    },
     definition: {
       en: 'Max acceptable data loss if the leader fails — bounded by unreplicated writes.',
       id: 'Kehilangan data maksimal yang boleh diterima jika leader gagal — dibatasi tulis yang belum ter-replikasi.',
@@ -392,6 +446,10 @@ export const glossaryEntries: GlossaryEntry[] = [
   {
     id: 'rto',
     match: ['RTO', 'recovery time objective'],
+    expansion: {
+      en: 'Recovery Time Objective',
+      id: 'Tujuan waktu pemulihan (Recovery Time Objective)',
+    },
     definition: {
       en: 'Max acceptable downtime while promoting a replica or restoring backups.',
       id: 'Downtime maksimal yang boleh diterima saat mempromosikan replica atau restore backup.',

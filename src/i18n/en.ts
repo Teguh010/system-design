@@ -68,6 +68,7 @@ const en = {
   },
   glossary: {
     openLesson: 'Lesson: {title}',
+    stageList: 'Terms in this step',
   },
 } as const;
 

@@ -70,6 +70,7 @@ const id = {
   },
   glossary: {
     openLesson: 'Lihat: {title}',
+    stageList: 'Istilah di step ini',
   },
 } satisfies UiMessages;
 

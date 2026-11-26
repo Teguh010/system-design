@@ -13,6 +13,7 @@ import { resolveBeat } from '../src/lessons/beats';
 import { labFor, type Lab } from '../src/lessons/labs';
 import type { Lesson, MetricValue, Scene, Step } from '../src/types';
 import { currentTheme, load, markVisited, save, setLastStep, setTheme } from '../src/ui/store';
+import { glossaryAbbrevLabel, glossaryExpansion, glossaryInProse } from '../src/glossary/enrich.ts';
 import { GlossaryHtml, GlossaryPlain, GlossaryScope } from './Glossary';
 
 type Progress = { visited: Record<string, number[]>; last: Record<string, number> };
@@ -274,6 +275,16 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   const seen = seenFor(progress, lesson.id);
   const values = valuesAt(lesson, index);
 
+  const stageGlossary = useMemo(
+    () =>
+      glossaryInProse(
+        current.title,
+        ...current.body,
+        current.callout?.text ?? '',
+      ),
+    [current],
+  );
+
   // Beats: optional micro-animation keyframes inside a single step.
   const beats = current.beats ?? [];
   const lab = labFor(lesson.id, index + 1);
@@ -401,12 +412,31 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
       </header>
       <div className="stage-card"><div className="stage-top">
         <div className="metrics">{lesson.metrics.map((m) => <Metric key={m.id} label={m.label} value={shownValues[m.id] ?? '—'} locale={locale} />)}</div>
-        <div className="controls"><button className="btn small replay" type="button" title="R" onClick={replay}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
-      </div><Diagram scene={stageScene} stageRef={stage} jump={false} breakable={canBreak ? Object.keys(current.chaos ?? {}).join(',') : ''} broken={canBreak ? brokenKey : ''} onEntityClick={toggleBroken} />
-      <div className="stage-foot"><div className="legend">{lesson.legend.map((l, i) => {
-        const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
-        return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
-      })}</div><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
+        <div className="stage-aside">
+          <div className="legend">{lesson.legend.map((l, i) => {
+            const [kind, label] = Array.isArray(l) ? l : [l, t(`packet.${l}`)];
+            return <span className="lg" key={i}><i className={`sw sw-${kind}`} />{label}</span>;
+          })}</div>
+          <div className="controls"><button className="btn small replay" type="button" title="R" onClick={replay}>↻ {t('stage.replay')}</button><button className={`btn small pause${paused ? ' is-on' : ''}`} type="button" title="Space" onClick={togglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button><button className="btn small fit" type="button" title="F" onClick={() => stage.current?.fit()}>⤢ {t('stage.fit')}</button></div>
+        </div>
+      </div>
+      <div className="stage-shell">
+        <Diagram scene={stageScene} stageRef={stage} jump={false} breakable={canBreak ? Object.keys(current.chaos ?? {}).join(',') : ''} broken={canBreak ? brokenKey : ''} onEntityClick={toggleBroken} />
+        {stageGlossary.length > 0 && (
+          <ul className="glossary-stage" aria-label={t('glossary.stageList')}>
+            {stageGlossary.map((e) => {
+              const full = glossaryExpansion(e, 'en');
+              return (
+                <li key={e.id}>
+                  <span className="glossary-stage-abbr">{glossaryAbbrevLabel(e)}</span>
+                  {full && <span className="glossary-stage-exp"> ({full})</span>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      <div className="stage-foot"><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
       {showLab && labResult && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
       {canBreak && <ChaosCard step={current} broken={broken} onToggle={toggleBroken} onRepair={() => setBroken([])} />}
       <div className="timeline-card"><div className="tl-head"><span>{t('lesson.timeline')}</span><span className="tl-count">{t('lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
@@ -482,6 +512,11 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
     document.body.classList.toggle('nav-open', navOpen);
     return () => document.body.classList.remove('nav-open');
   }, [navOpen]);
+  useEffect(() => {
+    const on = navHidden && !!lesson;
+    document.documentElement.classList.toggle('is-wide', on);
+    return () => document.documentElement.classList.remove('is-wide');
+  }, [navHidden, lesson]);
   useEffect(() => {
     const onStorage = () => refreshProgress();
     window.addEventListener('storage', onStorage);

@@ -1,7 +1,7 @@
 import type { LessonOverlay } from '../../../types.ts';
 
 const overlay: LessonOverlay = {
-  title: 'Perjalanan Sebuah Request',
+  title: 'Bagaimana sebuah request bekerja?',
   summary: 'Ikuti satu klik dari browser kamu ke server sampai balik lagi, lihat apa yang terjadi di balik layar, dan cari tahu kenapa sebagian pembaca menunggu berdetik-detik.',
   metrics: ['DNS', 'koneksi', 'request + server', 'download', 'halaman siap'],
   goals: [
@@ -175,8 +175,13 @@ const overlay: LessonOverlay = {
     'Server work · 1 ms': 'Kerja server · 1 ms',
     'Server work · 16 ms': 'Kerja server · 16 ms',
     'Build HTML': 'Susun HTML',
+    'DNS + TCP + TLS': 'DNS + TCP + TLS',
+    'Request + server': 'Request + server',
     'First byte (TTFB)': 'Byte pertama (TTFB)',
     'Read HTML': 'Baca HTML',
+    '40 more files': '40 file lagi',
+    'building HTML': 'merakit HTML',
+    painting: 'menggambar',
     'Wave 1 · CSS + JS': 'Gelombang 1 · CSS + JS',
     'wave 1: CSS + JS': 'gelombang 1: CSS + JS',
     'HTTP/2 download · wave 1': 'Download HTTP/2 · gelombang 1',
@@ -249,8 +254,9 @@ const overlay: LessonOverlay = {
       short: 'Response',
       title: 'Byte pertama mulai pulang ke layar',
       body: [
-        'Halaman HTML-nya selesai dirakit dan langsung mengalir balik ke browser. Tepat saat byte pertamanya sampai — di sini di angka <b>155 ms</b> — momen itu disebut <b>time to first byte</b> (TTFB): gabungan DNS + handshake + request + kerja server + jalan pulang.',
-        'Sisa HTML-nya menyusul dalam 15 ms. Browser nggak nunggu selesai semua — ia langsung mulai menggambar halaman, dan sambil baca HTML-nya, baru sadar ternyata butuh 40 file lagi.',
+        'Sebelum HTML bergerak, stopwatch tetap menghitung apa yang sudah terjadi di step sebelumnya. Kartu trace menjumlahkannya per micro-beat: <b>100 ms</b> untuk <b>DNS + TCP + TLS</b>, lalu <b>40 ms</b> untuk <b>GET</b> dan kerja server yang baru saja kamu lihat. Geser beat bar dan perhatikan tiap baris berganti ✓.',
+        'Baru setelah itu byte pertama HTML mengalir balik. Saat sampai di mesinmu pada <b>155 ms</b>, momen itu disebut <b>time to first byte</b> (TTFB): koneksi + request + kerja server + satu kali jalan pulang untuk byte itu.',
+        'Sisa HTML menyusul dalam <b>15 ms</b> sementara browser mulai menggambar. Saat membaca markup-nya, ia menemukan rujukan ke 40 file lagi — step berikutnya yang mengunduh semuanya.',
       ],
       callout: 'TTFB itu patokan seberapa cepat backend dan koneksimu. Semua yang terjadi setelahnya adalah urusan mengunduh file tambahan dan menggambar layar.',
       changes: ['+ byte pertama HTML mendarat di browser pada ~155 ms', '~ query database sudah selesai; HTML mengalir balik satu arah'],

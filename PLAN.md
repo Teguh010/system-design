@@ -272,7 +272,9 @@ Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau d
    - Tombol **Wide / Lebar** di header atas (atau shortcut `[`) menyembunyikan sidebar kiri kursus,
      menyembunyikan kartu *Rusak sistemnya* (`ChaosCard`) dan lab *Coba sendiri* (`LabCard`), serta memadatkan
      timeline *"Di pelajaran ini"* menjadi satu baris pil ringkas agar ruang visualisasi graph maksimal saat
-     screen recording.
+     screen recording. Class `is-wide` di `<html>` juga menyembunyikan bilah atas kanan (bahasa, tema), pill
+     durasi/level/step, ringkasan lesson, tombol ulang/jeda/pas, hint stage, dan beat-card (shortcut beat tetap aktif).
+   - Mode `?record=1` menyembunyikan elemen yang sama di area lesson plus seluruh header, sidebar, dan panel step.
    - Beat **tidak** auto-advance: pembaca (dan narator) memajukan beat manual lewat tombol/dot di `.beat-card`,
      **`↓` / `.`** (berikutnya), **`↑` / `,`** (sebelumnya), atau **`R`** (ulang dari beat pertama).
    - Di mode rekam `?record=1`, `.beat-card` disembunyikan; narator tetap memakai shortcut keyboard yang sama.
@@ -399,6 +401,8 @@ export type GlossaryEntry = {
   /** String yang dicocokkan (case-insensitive), urutkan panjang dulu saat regex */
   match: string[];
   definition: { en: string; id: string };
+  /** Kepanjangan singkatan (DNS → Domain Name System); tampil di tooltip sebelum definisi. */
+  expansion?: { en: string; id: string };
   /** Lesson siap di `course.ts`; kalau `soon`, tautan hanya judul modul / "belum tersedia" */
   lessonId?: string;
   /** Step opsional (1-based) — langkah yang paling mengajarkan istilah itu */
@@ -429,7 +433,9 @@ Tambah entri seiring lesson baru; jangan mendefinisikan istilah untuk modul yang
    - Untuk setiap `match`, gunakan word boundary; urutkan pola dari yang terpanjang agar `round-trip time`
      tidak terpotong jadi `RTT` + sisa.
    - Bungkus ke `<span class="gloss" data-gloss="rtt" tabindex="0">…</span>` (class untuk gaya + tooltip).
-3. Tooltip: `::after` / elemen anak dengan `definition` dari kamus (locale aktif) + link
+3. Tooltip: popover dengan `expansion` + `definition` (locale aktif) + link lesson.
+4. **Daftar singkatan di stage** (pojok kanan atas, di atas legend paket): `glossaryInProse()` memindai
+   judul + body + callout step; tiap entri yang punya `expansion` tampil sebagai `TCP (Transmission Control Protocol)`.
    `/{locale}/lessons/{lessonId}/{step}/` memakai pola yang sama dengan `lessonPath` di ScaleLab.
 4. Jika `lessonId` belum punya `lesson` di course → tampilkan definisi saja, atau link ke halaman modul
    tanpa step (keputusan implementasi; catat di checklist).

@@ -53,7 +53,7 @@ const CPU = (value: number, tone: 'good' | 'warn' | 'bad' | 'info' = 'good') => 
 
 export const requestLifecycle: Lesson = {
   id: 'request-lifecycle',
-  title: 'How a Request Travels',
+  title: 'How a Request Works',
   summary: 'Follow one click from your browser to the database and back, see what happens behind the scenes, and find out why some readers wait seconds.',
   minutes: 12,
   level: 'beginner',
@@ -436,49 +436,99 @@ export const requestLifecycle: Lesson = {
       chapter: 'solution',
       title: 'The first byte lands back on screen',
       body: [
-        'The finished HTML streams straight back to your browser. The exact moment its very first byte arrives — here at <b>155 ms</b> — is what engineers call <b>time to first byte</b> (TTFB): DNS + handshakes + request + server work + the trip back.',
-        'The rest of the HTML follows in 15 ms. Your browser starts painting right away — and as it reads down the HTML, it spots forty more files it still needs.',
+        'Before any HTML moves, the clock still counts everything from earlier steps. The trace card adds it up beat by beat: <b>100 ms</b> for <b>DNS + TCP + TLS</b>, then <b>40 ms</b> for the <b>GET</b> and the server work you just watched. Advance the beat bar and watch each line flip to ✓.',
+        'Only after that does the first byte stream back. When it lands on your machine at <b>155 ms</b>, engineers call that moment <b>time to first byte</b> (TTFB): connection + request + work + one trip home for that byte.',
+        'The rest of the HTML follows in <b>15 ms</b> while the browser starts painting. Parsing the markup, it discovers links to forty more files — the next step fetches those.',
       ],
       callout: { kind: 'tip', text: 'TTFB is the metric to watch for your backend and connection together. Everything after it is downloading extra files and drawing.' },
       changes: ['+ first byte of HTML reaches the browser at ~155 ms', '~ database queries are done; HTML streams back one way'],
       metrics: { download: '15 ms', total: '170 ms' },
       beats: [
         {
+          label: 'DNS + TCP + TLS',
+          duration: 2200,
+          entities: {
+            browser: { focus: true, badge: { text: 'line open', tone: 'info' } },
+            resolver: { badge: { text: 'saved · 5 min', tone: 'good' } },
+            web: { focus: true, badge: { text: 'TLS · open', tone: 'good' } },
+            trace: {
+              title: 'TTFB · 155 ms',
+              lines: ['> DNS + TCP + TLS    100 ms', '# request + server    40 ms', '# first byte back     15 ms', '# read HTML (+15 ms stream)', '# needs 40 more files inside'],
+            },
+          },
+          links: { bw: { label: 'TCP + TLS · 2 RTT' } },
+          flows: [{ route: ['bw'], kind: 'ping', rate: 1.2, bounce: true, returnKind: 'ping', once: 2 }],
+          metrics: { total: '100 ms' },
+        },
+        {
+          label: 'Request + server',
+          duration: 2200,
+          entities: {
+            web: { ...CPU(0.2), focus: true, badge: { text: 'building HTML', tone: 'info' } },
+            db: { focus: true, badge: { text: '3 queries · 15 ms', tone: 'good' } },
+            trace: {
+              lines: ['✓ DNS + TCP + TLS    100 ms', '> request + server    40 ms', '# first byte back     15 ms', '# read HTML (+15 ms stream)', '# needs 40 more files inside'],
+            },
+          },
+          links: { wd: { label: '3 queries · 0.5 ms' }, bw: { label: 'GET /storm-warning' } },
+          flows: [{ route: ['bw', 'wd'], rate: 1.5, bounce: true, once: 1 }],
+          metrics: { server: '55 ms', total: '140 ms' },
+        },
+        {
           label: 'First byte (TTFB)',
           duration: 2400,
           entities: {
             browser: { focus: true, badge: { text: 'TTFB 155 ms', tone: 'good' } },
+            web: { ...CPU(0.1), badge: { text: 'sending HTML', tone: 'good' } },
+            db: { badge: { text: 'done', tone: 'good' } },
             trace: {
               lines: ['✓ DNS + TCP + TLS    100 ms', '✓ request + server    40 ms', '> first byte back     15 ms', '# read HTML (+15 ms stream)', '# needs 40 more files inside'],
             },
           },
+          links: { bw: { label: 'HTML · 1st byte @ 155 ms', labelTone: 'good' }, wd: { dashed: true, label: 'idle' } },
           flows: [{ route: ['~bw'], kind: 'res', rate: 1.5, speed: 170, once: 1 }],
           metrics: { download: '1 ms', total: '156 ms' },
         },
         {
           label: 'Read HTML',
+          duration: 2000,
+          entities: {
+            browser: { focus: true, badge: { text: 'painting', tone: 'info' } },
+            trace: {
+              lines: ['✓ DNS + TCP + TLS    100 ms', '✓ request + server    40 ms', '✓ first byte back     15 ms', '> read HTML (+15 ms stream)', '# needs 40 more files inside'],
+            },
+          },
+          flows: [{ route: ['~bw'], kind: 'res', rate: 1.8, speed: 170 }],
+          metrics: { download: '15 ms', total: '170 ms' },
+        },
+        {
+          label: '40 more files',
           entities: {
             browser: { badge: { text: 'TTFB 155 ms', tone: 'good' } },
+            trace: {
+              lines: ['✓ DNS + TCP + TLS    100 ms', '✓ request + server    40 ms', '✓ first byte back     15 ms', '✓ read HTML (+15 ms stream)', '> needs 40 more files inside'],
+            },
           },
           metrics: { download: '15 ms', total: '170 ms' },
         },
       ],
       scene: trip({
-        browser: { badge: { text: 'TTFB 155 ms', tone: 'good' } },
-        web: { ...CPU(0.1), badge: { text: 'sending HTML', tone: 'good' } },
+        browser: { badge: { text: 'line open', tone: 'info' }, focus: true },
+        resolver: { badge: { text: 'saved · 5 min', tone: 'good' } },
+        web: { ...CPU(0.1), badge: { text: 'TLS · open', tone: 'good' } },
         db: { badge: { text: 'done', tone: 'good' } },
-        request: { label: 'HTML · 1st byte @ 155 ms', labelTone: 'good' },
+        request: { label: 'TCP + TLS · 2 RTT' },
         query: { dashed: true, label: 'idle' },
         extra: {
           trace: card(24, 22, 'TTFB · 155 ms', [
-            '✓ DNS + TCP + TLS    100 ms',
-            '✓ request + server    40 ms',
-            '✓ first byte back     15 ms',
-            '> read HTML (+15 ms stream)',
+            '> DNS + TCP + TLS    100 ms',
+            '# request + server    40 ms',
+            '# first byte back     15 ms',
+            '# read HTML (+15 ms stream)',
             '# needs 40 more files inside',
           ]),
         },
-        flows: [{ route: ['~bw'], kind: 'res', rate: 1.8, speed: 170 }],
+        flows: [],
       }),
     },
     {
