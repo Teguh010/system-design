@@ -272,7 +272,7 @@ Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau d
    - Tombol **Wide / Lebar** di header atas (atau shortcut `[`) menyembunyikan sidebar kiri kursus,
      menyembunyikan kartu *Rusak sistemnya* (`ChaosCard`) dan lab *Coba sendiri* (`LabCard`), serta memadatkan
      timeline *"Di pelajaran ini"* menjadi satu baris pil ringkas agar ruang visualisasi graph maksimal saat
-     screen recording. Class `is-wide` di `<html>` juga menyembunyikan bilah atas kanan (bahasa, tema), pill
+     screen recording. Class `is-wide` di `<html>` menyembunyikan pill
      durasi/level/step, ringkasan lesson, tombol ulang/jeda/pas, hint stage, dan beat-card (shortcut beat tetap aktif).
    - Mode `?record=1` menyembunyikan elemen yang sama di area lesson plus seluruh header, sidebar, dan panel step.
    - Beat **tidak** auto-advance: pembaca (dan narator) memajukan beat manual lewat tombol/dot di `.beat-card`,
@@ -280,6 +280,33 @@ Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau d
    - Di mode rekam `?record=1`, `.beat-card` disembunyikan; narator tetap memakai shortcut keyboard yang sama.
 4. **Terjemahan beat (`i18n`):** semua `beat.label`, teks kartu/badge/link di dalam `beats` otomatis diterjemahkan
    lewat `labels` di `LessonOverlay` dan divalidasi oleh `npm run check:i18n` serta `npm run test`.
+5. **Prosa panel kanan vs micro-beat (patokan YouTube).** Teks step **tidak** boleh menginstruksikan UI
+   (jangan: "geser beat bar", "per micro-beat", "lihat baris berganti ✓"). Narasi harus bisa dibacakan seperti
+   voice-over sambil beat dimajukan manual di keyboard. **Urutan kalimat** mengikuti fase beat yang sama;
+   angka di prosa harus selaras dengan kartu `trace` dan metrik. Acuan resmi: **step 6 Response** di
+   `request-lifecycle` (`body[0]`–`body[3]`, ID persis seperti di bawah; EN padanan struktur sama):
+
+   - *Hook:* stopwatch sudah jalan sebelum byte HTML pertama sampai.
+   - *Akumulasi:* DNS + TCP + TLS (~100 ms) → request + server (~40 ms) → 140 ms sebelum jawaban dikirim
+     (beat 1–2 + baris trace).
+   - *TTFB:* byte pertama pulang ~15 ms → total 155 ms; definisi TTFB tanpa meta UI (beat 3).
+   - *Setelah TTFB:* browser gambar sambil download; teaser 40 file (beat 4–5).
+
+   Cuplikan ID (`src/lessons/i18n/id/request-lifecycle.ts`, step Response):
+
+   > Sejak kamu menekan Enter, stopwatch sudah berjalan, padahal belum ada satu byte HTML pun yang sampai.
+   >
+   > Pertama, ada DNS, jabat tangan TCP, dan TLS. Ketiganya memakan waktu sekitar 100 ms. Setelah itu browser
+   > mengirim request, dan server memprosesnya di data center. Ini menambah sekitar 40 ms lagi. Jadi, 140 ms sudah
+   > terpakai sebelum server mulai mengirim jawabannya.
+   >
+   > Lalu byte pertama dari HTML itu dikirim dan menempuh perjalanan pulang ke browser, sekitar 15 ms. Saat byte
+   > itu tiba, total waktunya 155 ms. Angka inilah yang disebut TTFB, singkatan dari time to first byte: semua
+   > waktu tunggu tadi, ditambah perjalanan pulang untuk satu byte pertama.
+   >
+   > Tapi browser tidak menunggu HTML-nya selesai diunduh. Begitu byte-byte pertama masuk, ia langsung mulai
+   > membaca dan menggambar halaman. Nah, di dalam HTML itu ada rujukan ke 40 file lain. Itulah yang akan kita
+   > bahas selanjutnya.
 
 ### 4.2 Scene dan layout
 

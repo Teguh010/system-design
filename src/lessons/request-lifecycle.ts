@@ -436,9 +436,10 @@ export const requestLifecycle: Lesson = {
       chapter: 'solution',
       title: 'The first byte lands back on screen',
       body: [
-        'Before any HTML moves, the clock still counts everything from earlier steps. The trace card adds it up beat by beat: <b>100 ms</b> for <b>DNS + TCP + TLS</b>, then <b>40 ms</b> for the <b>GET</b> and the server work you just watched. Advance the beat bar and watch each line flip to ✓.',
-        'Only after that does the first byte stream back. When it lands on your machine at <b>155 ms</b>, engineers call that moment <b>time to first byte</b> (TTFB): connection + request + work + one trip home for that byte.',
-        'The rest of the HTML follows in <b>15 ms</b> while the browser starts painting. Parsing the markup, it discovers links to forty more files — the next step fetches those.',
+        'From the moment you hit Enter, the stopwatch is already running — even though not a single byte of HTML has arrived yet.',
+        'First comes <b>DNS</b>, the <b>TCP</b> handshake, and <b>TLS</b>. Together that’s about <b>100 ms</b>. Then the browser sends the request and the server processes it in the data centre — another <b>40 ms</b> or so. So <b>140 ms</b> are already spent before the server starts sending the answer.',
+        'Then the first byte of HTML is sent and travels home to the browser — about <b>15 ms</b> on the way back. When that byte lands, the total is <b>155 ms</b>. That number is <b>TTFB</b>, short for <b>time to first byte</b>: all the waiting above, plus the trip home for that first byte.',
+        'But the browser does not wait for the full HTML download. As soon as those first bytes arrive, it starts reading and painting the page. Buried in that HTML are references to forty more files — that’s what we cover next.',
       ],
       callout: { kind: 'tip', text: 'TTFB is the metric to watch for your backend and connection together. Everything after it is downloading extra files and drawing.' },
       changes: ['+ first byte of HTML reaches the browser at ~155 ms', '~ database queries are done; HTML streams back one way'],

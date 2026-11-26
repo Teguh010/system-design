@@ -418,8 +418,7 @@ button {
   opacity: 1;
 }
 
-/* Wide lesson layout: hide chrome that distracts during YouTube capture */
-.is-wide .top-right,
+/* Wide lesson layout: hide chrome that distracts during YouTube capture (keep EN/ID + theme) */
 .is-wide .top .menu {
   display: none;
 }
@@ -765,6 +764,9 @@ a.lesson-card:hover {
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .l-head {
@@ -1263,12 +1265,11 @@ a.lesson-card:hover {
 /* step panel */
 
 .step-card {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   padding: 16px 18px 12px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .step-top {
@@ -1303,7 +1304,7 @@ a.lesson-card:hover {
 .ch-recap { color: var(--ink); }
 
 .step {
-  flex: 1;
+  flex: 0 0 auto;
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.65;

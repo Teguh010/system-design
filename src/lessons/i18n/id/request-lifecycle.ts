@@ -254,9 +254,10 @@ const overlay: LessonOverlay = {
       short: 'Response',
       title: 'Byte pertama mulai pulang ke layar',
       body: [
-        'Sebelum HTML bergerak, stopwatch tetap menghitung apa yang sudah terjadi di step sebelumnya. Kartu trace menjumlahkannya per micro-beat: <b>100 ms</b> untuk <b>DNS + TCP + TLS</b>, lalu <b>40 ms</b> untuk <b>GET</b> dan kerja server yang baru saja kamu lihat. Geser beat bar dan perhatikan tiap baris berganti ✓.',
-        'Baru setelah itu byte pertama HTML mengalir balik. Saat sampai di mesinmu pada <b>155 ms</b>, momen itu disebut <b>time to first byte</b> (TTFB): koneksi + request + kerja server + satu kali jalan pulang untuk byte itu.',
-        'Sisa HTML menyusul dalam <b>15 ms</b> sementara browser mulai menggambar. Saat membaca markup-nya, ia menemukan rujukan ke 40 file lagi — step berikutnya yang mengunduh semuanya.',
+        'Sejak kamu menekan Enter, stopwatch sudah berjalan, padahal belum ada satu byte HTML pun yang sampai.',
+        'Pertama, ada <b>DNS</b>, jabat tangan <b>TCP</b>, dan <b>TLS</b>. Ketiganya memakan waktu sekitar <b>100 ms</b>. Setelah itu browser mengirim request, dan server memprosesnya di data center. Ini menambah sekitar <b>40 ms</b> lagi. Jadi, <b>140 ms</b> sudah terpakai sebelum server mulai mengirim jawabannya.',
+        'Lalu byte pertama dari HTML itu dikirim dan menempuh perjalanan pulang ke browser, sekitar <b>15 ms</b>. Saat byte itu tiba, total waktunya <b>155 ms</b>. Angka inilah yang disebut <b>TTFB</b>, singkatan dari <b>time to first byte</b>: semua waktu tunggu tadi, ditambah perjalanan pulang untuk satu byte pertama.',
+        'Tapi browser tidak menunggu HTML-nya selesai diunduh. Begitu byte-byte pertama masuk, ia langsung mulai membaca dan menggambar halaman. Nah, di dalam HTML itu ada rujukan ke 40 file lain. Itulah yang akan kita bahas selanjutnya.',
       ],
       callout: 'TTFB itu patokan seberapa cepat backend dan koneksimu. Semua yang terjadi setelahnya adalah urusan mengunduh file tambahan dan menggambar layar.',
       changes: ['+ byte pertama HTML mendarat di browser pada ~155 ms', '~ query database sudah selesai; HTML mengalir balik satu arah'],
