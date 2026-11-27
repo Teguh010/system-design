@@ -1,8 +1,10 @@
 import type { Locale } from '../i18n/index.ts';
 import type { Entity, Lesson, LessonOverlay, MetricValue, Scene, SceneBeat } from '../types.ts';
 
-const overlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
-  'id/request-lifecycle': () => import('./i18n/id/request-lifecycle.ts'),
+/** Lesson source files written in Indonesian; English comes from `i18n/en/` overlays. */
+const idSourceLessons = new Set(['request-lifecycle']);
+
+const idOverlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
   'id/latency-throughput': () => import('./i18n/id/latency-throughput.ts'),
   'id/napkin-math': () => import('./i18n/id/napkin-math.ts'),
   'id/vertical-horizontal': () => import('./i18n/id/vertical-horizontal.ts'),
@@ -16,6 +18,10 @@ const overlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
   'id/storage-engines': () => import('./i18n/id/storage-engines.ts'),
   'id/replication': () => import('./i18n/id/replication.ts'),
   'id/sharding': () => import('./i18n/id/sharding.ts'),
+};
+
+const enOverlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
+  'en/request-lifecycle': () => import('./i18n/en/request-lifecycle.ts'),
 };
 
 const PREFIX = /^([!✓#>] )/;
@@ -87,13 +93,23 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
 
 const cache = new Map<string, Lesson>();
 
-/** The lesson in `locale`, loading its translation file on demand. Falls back to English. */
+/** The lesson in `locale`, loading its translation file on demand. */
 export async function localize(lesson: Lesson, locale: Locale): Promise<Lesson> {
-  if (locale === 'en') return lesson;
   const key = `${locale}/${lesson.id}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const load = overlays[key];
+
+  if (idSourceLessons.has(lesson.id)) {
+    if (locale === 'id') return lesson;
+    const load = enOverlays[key];
+    if (!load) return lesson;
+    const out = applyLessonOverlay(lesson, (await load()).default);
+    cache.set(key, out);
+    return out;
+  }
+
+  if (locale === 'en') return lesson;
+  const load = idOverlays[key];
   if (!load) return lesson;
   const out = applyLessonOverlay(lesson, (await load()).default);
   cache.set(key, out);

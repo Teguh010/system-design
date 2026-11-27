@@ -4,13 +4,15 @@ import { requestLifecycle } from '../src/lessons/request-lifecycle.ts';
 import { formatMs, pageLoad, requestLifecycleLab } from '../src/lessons/labs/request-lifecycle.ts';
 
 const text = (v: unknown) => (typeof v === 'string' ? v : (v as { v: string }).v);
-const metricsAt = (step: number) => Object.assign({}, ...requestLifecycle.steps.slice(0, step).map((s) => s.metrics));
+/** Cumulative metrics through lesson step `n` (1-based; step 7 includes “More files”). */
+const metricsAt = (n: number) =>
+  Object.assign({}, ...requestLifecycle.steps.slice(0, n).map((s) => s.metrics));
 
 test('the page-load model reproduces the lesson’s static steps', () => {
   for (const [step, rtt, work] of [[7, 30, 25], [8, 30, 410], [9, 300, 25]] as const) {
     const expected = metricsAt(step);
     const b = pageLoad(rtt, work);
-    for (const id of ['dns', 'connect', 'server', 'download', 'total'] as const) assert.equal(formatMs(b[id], 'en', id === 'total'), text(expected[id]), `step ${step} ${id}`);
+    for (const id of ['dns', 'connect', 'server', 'download', 'total'] as const) assert.equal(formatMs(b[id], 'id', id === 'total'), text(expected[id]), `step ${step} ${id}`);
   }
 });
 

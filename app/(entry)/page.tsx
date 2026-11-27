@@ -32,6 +32,6 @@ const redirectScript = `
 export default function EntryPage() {
   return <>
     <script dangerouslySetInnerHTML={{ __html: redirectScript }} />
-    <main><a href="/en/">English</a> · <a href="/id/">Bahasa Indonesia</a></main>
+    <main><a href="/id/">Bahasa Indonesia</a> · <a href="/en/">English</a></main>
   </>;
 }

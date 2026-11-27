@@ -30,7 +30,11 @@ export interface CourseModule {
 }
 
 const soon = (id: string, en: string, idn = en): CourseLesson => ({ id, title: { en, id: idn } });
-const ready = (lesson: Lesson, idn: string): CourseLesson => ({ id: lesson.id, title: { en: lesson.title, id: idn }, lesson });
+const ready = (lesson: Lesson, idn: string, en?: string): CourseLesson => ({
+  id: lesson.id,
+  title: { en: en ?? lesson.title, id: idn },
+  lesson,
+});
 
 export const course: CourseModule[] = [
   {
@@ -38,7 +42,7 @@ export const course: CourseModule[] = [
     title: { en: 'Foundations', id: 'Dasar-dasar' },
     color: '#d9b77a',
     lessons: [
-      ready(requestLifecycle, 'Bagaimana sebuah request bekerja?'),
+      ready(requestLifecycle, 'Bagaimana sebuah request bekerja?', 'How a Request Works'),
       ready(latencyThroughput, 'Latency & Throughput'),
       ready(napkinMath, 'Hitungan Kasar (Napkin Math)'),
     ],

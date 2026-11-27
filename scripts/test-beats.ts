@@ -48,12 +48,15 @@ test('resolveBeat patches scene cleanly per beat and carries metrics across beat
 
   const b1 = resolveBeat(step, 1);
   assert.equal(b1.scene.entities.browser?.focus, true);
-  assert.equal(b1.scene.entities.browser?.badge?.text, '203.0.113.7');
-  assert.equal(b1.scene.links?.bw?.label, 'open');
+  assert.equal(b1.scene.entities.browser?.badge?.text, 'cache: miss');
+  assert.equal(b1.scene.links?.bw, undefined);
   assert.equal(b1.scene.flows?.[0]?.once, 1);
   assert.equal(b1.metrics.dns, '?');
 
   const b2 = resolveBeat(step, 2);
   assert.equal(b2.metrics.dns, '40 ms');
   assert.equal(b2.scene.flows?.[0]?.rate, 1);
+  assert.equal(b2.scene.entities.browser?.focus, true);
+  assert.equal(b2.scene.entities.browser?.badge?.text, 'cache: miss');
+  assert.equal(b2.scene.links?.bw, undefined);
 });

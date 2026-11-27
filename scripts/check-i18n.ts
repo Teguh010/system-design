@@ -5,14 +5,23 @@ import { existsSync } from 'node:fs';
 const root = new URL('../src/', import.meta.url).pathname;
 const { allLessons } = await import(root + 'course.ts');
 const { localize, applyLessonOverlay } = await import(root + 'lessons/localize.ts');
+const idSourceLessons = new Set(['request-lifecycle']);
 let problems = 0;
 for (const entry of allLessons) {
   const lesson = entry.lesson; if (!lesson) continue;
-  const file = `${root}lessons/i18n/id/${lesson.id}.ts`;
+  const idSource = idSourceLessons.has(lesson.id);
+  const file = `${root}lessons/i18n/${idSource ? 'en' : 'id'}/${lesson.id}.ts`;
   if (!existsSync(file)) { problems++; console.log(lesson.id, 'NO TRANSLATION'); continue; }
   const o = (await import(file)).default;
-  const localized = await localize(lesson, 'id');
-  if (localized === lesson || JSON.stringify(localized) !== JSON.stringify(applyLessonOverlay(lesson, o))) {
+  const localized = await localize(lesson, idSource ? 'en' : 'id');
+  if (idSource) {
+    if (await localize(lesson, 'id') !== lesson) {
+      problems++; console.log(lesson.id, 'ID SOURCE: id locale must return lesson unchanged');
+    }
+    if (JSON.stringify(localized) !== JSON.stringify(applyLessonOverlay(lesson, o))) {
+      problems++; console.log(lesson.id, 'EN TRANSLATION LOADER MISSING OR INCORRECT');
+    }
+  } else if (localized === lesson || JSON.stringify(localized) !== JSON.stringify(applyLessonOverlay(lesson, o))) {
     problems++; console.log(lesson.id, 'TRANSLATION LOADER MISSING OR INCORRECT');
   }
   const strings = new Set<string>();

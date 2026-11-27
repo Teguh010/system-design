@@ -292,6 +292,20 @@ Agar satu step yang menjelaskan beberapa fase berurutan tidak terasa kaku atau d
    - *TTFB:* byte pertama pulang ~15 ms → total 155 ms; definisi TTFB tanpa meta UI (beat 3).
    - *Setelah TTFB:* browser gambar sambil download; teaser 40 file (beat 4–5).
 
+   **Step 7 *More files*** — empat paragraf: 40 file di HTML → HTTP/2 tanpa handshake baru → gelombang
+   unduhan ~245 ms → penjumlahan **400 ms**. Lima beat: reuse jalur → gelombang 1 → gelombang 2 →
+   download total → halaman siap; kartu `trace` memakai prefiks `> `/#/✓ selaras baris demi baris.
+
+   **Step 9 *Far away*** — lima paragraf panel (seluler benua lain → RTT 300 ms → analogi surat →
+   connect 600 ms + download 1 s → total ~2 s / kerja server 25 ms). Enam beat: Far reader → Connect
+   → Request → 40 file → total ~2 s → 25 ms work; kartu `trace` progresif, satu `>` per beat.
+
+   **Step 8 *Slow query* (N+1)** — delapan paragraf panel (perpustakaan 40 buku → 40×10 ms → 785 ms
+   → CPU 15% → nama N+1 → fix → jembatan jarak). Enam beat: Storm → 1× komentar → 40× penulis →
+   total ~785 ms → **N+1 · CPU idle** → Fix; satu baris `>` per beat pada kartu `trace`.
+   `resolveBeat` menumpuk patch entity/link per beat (lihat `src/lessons/beats.ts`) agar beat terakhir
+   tidak mereset kartu runtime.
+
    Cuplikan ID (`src/lessons/i18n/id/request-lifecycle.ts`, step Response):
 
    > Sejak kamu menekan Enter, stopwatch sudah berjalan, padahal belum ada satu byte HTML pun yang sampai.

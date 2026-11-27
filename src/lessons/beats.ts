@@ -2,8 +2,9 @@ import type { Entity, Link, MetricValue, Scene, SceneBeat, Step } from '../types
 
 /**
  * Resolves the active scene and metrics for a step at `beatIndex`.
- * Entity/link overrides apply cleanly on top of `step.scene` so scrubbing backwards or forwards
- * is always deterministic; metric overrides carry across earlier beats in the same step.
+ * Entity/link patches stack beat 0 → `beatIndex` on `step.scene` (same as metrics) so later
+ * micro-beats can change only badges without resetting the trace card. Flows come from the
+ * active beat only, or from `step.scene` when that beat does not set `flows`.
  */
 export function resolveBeat(
   step: Step,
@@ -17,8 +18,9 @@ export function resolveBeat(
   const beat = beats[idx]!;
 
   const entities: Record<string, Entity> = { ...step.scene.entities };
-  if (beat.entities) {
-    for (const [id, patch] of Object.entries(beat.entities)) {
+  for (const b of beats.slice(0, idx + 1)) {
+    if (!b.entities) continue;
+    for (const [id, patch] of Object.entries(b.entities)) {
       if (patch === null) {
         delete entities[id];
       } else {
@@ -30,8 +32,9 @@ export function resolveBeat(
   }
 
   const links: Record<string, Link> = { ...step.scene.links };
-  if (beat.links) {
-    for (const [id, patch] of Object.entries(beat.links)) {
+  for (const b of beats.slice(0, idx + 1)) {
+    if (!b.links) continue;
+    for (const [id, patch] of Object.entries(b.links)) {
       if (patch === null) {
         delete links[id];
       } else {
