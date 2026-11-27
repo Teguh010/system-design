@@ -317,9 +317,9 @@ const overlay: LessonOverlay = {
       "title": "The first byte lands back on screen",
       "body": [
         "From the moment you hit Enter, the stopwatch is already running — even though not a single byte of HTML has arrived yet.",
-        "First comes <b>DNS</b>, the <b>TCP</b> handshake, and <b>TLS</b>. Together that’s about <b>100 ms</b>. Then the browser sends the request and the server processes it in the data centre — another <b>40 ms</b> or so. So <b>140 ms</b> are already spent before the server starts sending the answer.",
-        "Then the first byte of HTML is sent and travels home to the browser — about <b>15 ms</b> on the way back. When that byte lands, the total is <b>155 ms</b>. That number is <b>TTFB</b>, short for <b>time to first byte</b>: all the waiting above, plus the trip home for that first byte.",
-        "But the browser does not wait for the full HTML download. As soon as those first bytes arrive, it starts reading and painting the page. Buried in that HTML are references to forty more files — that’s what we cover next."
+        "First comes <b>DNS</b>, the <b>TCP</b> handshake, and <b>TLS</b>. Together that’s about <b>100 ms</b>. Then the browser sends the request (15 ms) and the server processes it (25 ms) — <b>40 ms</b> more, so <b>140 ms</b> are spent before the server starts replying.",
+        "Then the first byte of HTML travels back to the browser — about <b>15 ms</b>, landing at <b>155 ms</b> total, which is <b>TTFB</b> (<i>time to first byte</i>). In the bar above, 15 ms out + 25 ms work + 15 ms first byte back add up to <b>55 ms</b> under <code>request + server</code>.",
+        "The browser doesn’t wait for the remaining HTML stream (+15 ms under download, bringing the running total to <b>170 ms</b>). As soon as the first bytes arrive, it starts painting the page — and discovers links to forty more files that we cover next."
       ],
       "callout": "TTFB is the metric to watch for your backend and connection together. Everything after it is downloading extra files and drawing.",
       "changes": [
@@ -331,12 +331,12 @@ const overlay: LessonOverlay = {
       "short": "More files",
       "title": "One page, forty more files",
       "body": [
-        "That HTML points to stylesheets, scripts, fonts, and images — roughly forty files. Grabbing them one by one would cost forty round trips, so with <b>HTTP/2</b> the browser fetches dozens in parallel over the same open connection.",
-        "Some files are only discovered after others arrive, so they land in a few waves: about <b>245 ms</b>. Add up the bar at the top: 40 + 60 + 55 + 245 = <b>400 ms</b>. That’s the snappy 0.4 seconds you saw on your laptop!",
-        "Beberapa file baru muncul setelah yang lain datang (misalnya gambar yang disembunyikan di CSS), jadi browser mengambil dalam beberapa gelombang: CSS dan JavaScript dulu bareng, lalu font dan gambar sisanya. Baris download ini menambah sekitar <b>245 ms</b>.",
-        "Sekarang jumlahkan bilah di atas: 40 + 60 + 55 + 245 = <b>400 ms</b>. Itu angka seperempat detik yang sama dari langkah pertama — satu klik, halaman utuh di laptopmu."
+        "The HTML you just read isn’t the whole page yet. Inside it are links to stylesheets, scripts, fonts, and images — roughly <b>40 files</b> in total.",
+        "Opening a brand-new connection for every file would cost 40 more round trips. Instead, the browser reuses the open pipe: with <b>HTTP/2</b>, dozens of requests share one connection — <b>0 ms</b> of extra handshake.",
+        "Some assets are only discovered after earlier ones load (like background images inside CSS), so they land in a couple of waves: CSS and JavaScript first, then fonts and the remaining images. Downloading them adds about <b>245 ms</b>.",
+        "Now add up the bar at the top: 40 + 60 + 55 + 245 = <b>400 ms</b>. That’s the snappy 0.4 seconds from step one — one click, full page on your laptop."
       ],
-      "callout": "Sebagian besar yang kamu lihat di layar datang setelah byte HTML pertama. HTTP/2 dan caching memangkas babak kedua ini.",
+      "callout": "Most of what you see on screen arrives after the first byte of HTML. HTTP/2 and caching shrink this second half.",
       "changes": [
         "+ 40 extra files pulled over the same open connection"
       ]
@@ -344,15 +344,24 @@ const overlay: LessonOverlay = {
     {
       "short": "Slow query",
       "title": "Clue #1: Why popular articles stall (N+1)",
+      "predict": {
+        "question": "This busy article pushes server time from 25 ms up to 435 ms across 41 database queries. What happens to the web server’s CPU?",
+        "options": [
+          "CPU spikes to 95–100% processing all those comments",
+          "CPU actually drops to ~15% because the server sits idle waiting on the database",
+          "CPU stays flat at exactly 20%"
+        ],
+        "explain": "The web server isn’t crunching numbers — it fires one query, waits for the database to reply, and repeats 40 times. Waiting leaves the CPU mostly idle at ~15%."
+      },
       "body": [
-        "Now let’s check the first batch of complaints, which come from popular articles with lots of comments. The code fetches the comment list (1 query), then fetches each commenter’s name in a separate query — <b>40 extra trips</b> to the database. At ~10 ms each, that adds <b>410 ms</b>.",
-        "Here’s the weird clue on the server’s CPU meter: it actually <i>drops</i> to 15%, because the server is just sitting there waiting. This classic bug is called an <b>N+1 query</b>. Combining them into a single query brings server time right back down.",
-        "Itulah yang terjadi di server kita. Pertama, server mengambil 40 komentar dengan satu query, sekitar <b>10 ms</b>. Sampai sini aman. Tapi setiap komentar butuh nama penulisnya, dan nama itu diambil dengan query terpisah. Jadi ada <b>40 query tambahan</b> ke database, masing-masing sekitar 10 ms. Totalnya <b>40 × 10 = 400 ms</b> tambahan.",
-        "Akibatnya, halaman yang tadinya selesai dalam <b>400 ms</b> sekarang butuh sekitar <b>785 ms</b>. Hampir dua kali lebih lama untuk pembaca.",
-        "Anehnya, kalau kamu lihat CPU web server, angkanya malah turun ke <b>15%</b>. Artinya server tidak kewalahan menghitung. Ia hanya diam menunggu jawaban database, satu query demi satu query.",
-        "Pola ini punya nama: <b>N+1 query</b>. Satu query untuk daftar komentar, ditambah N query untuk tiap penulisnya.",
-        "Solusinya: ambil komentar dan penulisnya sekaligus dalam <b>satu query gabungan</b>. Kerja database kembali jadi sekitar <b>15 ms</b> saja.",
-        "Jadi sebelum membeli server yang lebih besar, ukur dulu. Masalahnya sering bukan di hardware. Dan di petunjuk berikutnya, kita lihat masalah yang berbeda: pembaca yang tinggal jauh dari server."
+        "The exact same site is still fast on your laptop: about <b>400 ms</b>. Yet in production readers complain, and almost every complaint hits one article: a storm warning with a very long comment thread.",
+        "Imagine sending someone to fetch 40 books from a library. Option one: they make one trip and carry all 40 back. Option two: they walk back and forth 40 times, one book per trip. Same books, vastly slower.",
+        "That’s what our server is doing. First it pulls 40 comments in one query, taking about <b>10 ms</b>. So far so good. But each comment needs its author’s name, fetched in a separate query — <b>40 extra trips</b> at ~10 ms each, adding <b>40 × 10 = 400 ms</b>.",
+        "As a result, a page that used to finish in <b>400 ms</b> now takes roughly <b>785 ms</b> — nearly twice as long for the reader.",
+        "Weirdly, if you look at the web server’s CPU meter, it actually <i>drops</i> to <b>15%</b>. The server isn’t overwhelmed with math; it’s just sitting idle waiting on the database, one query at a time.",
+        "This classic bug has a name: an <b>N+1 query</b>. One query for the list of comments, plus N more queries for each author.",
+        "The fix: pull the comments and their authors together in <b>one combined query</b>. Database work drops right back down to around <b>15 ms</b>.",
+        "So measure before buying bigger hardware — the problem often isn’t CPU at all. Next, let’s inspect a totally different clue: readers far away from your server."
       ],
       "callout": "Measure before buying bigger hardware. Low CPU plus slow server time usually means you’re waiting on too many queries.",
       "changes": [
@@ -364,11 +373,11 @@ const overlay: LessonOverlay = {
       "short": "Far away",
       "title": "Clue #2: Why far-away readers wait two seconds",
       "body": [
-        "The worst complaints come from a reader on mobile data on another continent. Their round trip to your server isn’t 30 ms — it’s <b>300 ms</b>, ten times farther. That makes every single round trip on the list 10× more expensive.",
-        "Your server is still just as fast (25 ms of work), and the N+1 bug is fixed. Yet handshakes alone burn 600 ms, and those forty files take a full second. Out of ~2.0 seconds, <b>99% is pure distance</b>.",
-        "Bayangkan berkirim surat. Surat ke kota sebelah sampai besok pagi, tapi surat ke luar negeri butuh seminggu. Isi suratnya sama, hanya jaraknya yang berbeda. Setiap kali kita butuh balasan, kita menunggu jauh lebih lama.",
-        "Yang menarik, servernya sendiri tidak bermasalah. Kerjanya tetap cepat, hanya <b>25 ms</b>, dan bug N+1 tadi sudah diperbaiki. Tapi lihat ke mana waktunya habis. Persiapan koneksi (DNS, TCP, dan TLS) saja memakan <b>600 ms</b>. Lalu mengunduh 40 file memakan sekitar 1 detik penuh, karena setiap file harus minta dan dijawab lewat jalur yang jauh itu.",
-        "Totalnya sekitar <b>2 detik</b>. Dari situ, server hanya bekerja 25 ms. Hampir semua sisanya adalah waktu di perjalanan. Jadi server secepat apa pun tidak akan menolong, karena masalahnya ada pada jarak."
+        "Now the worst complaints come from readers opening your site over mobile data on another continent.",
+        "For them, a single round trip to the server isn’t 30 ms — it’s <b>300 ms</b>, ten times longer. The number of trips stays the same, but every trip costs ten times as much.",
+        "Think of mailing letters. A letter to the next town arrives tomorrow morning, while one overseas takes a week. The words inside are identical — only the distance changed, so every reply takes far longer.",
+        "Interestingly, the server itself is completely healthy: its work still takes just <b>25 ms</b>, and the N+1 bug is already fixed. Yet connection setup (DNS, TCP, and TLS) burns <b>600 ms</b>, and downloading those 40 files takes a full second over that long path.",
+        "Total load time hits roughly <b>2 seconds</b>, of which the server only spent 25 ms working. Almost everything else is travel time — so a faster server cannot fix a distance problem."
       ],
       "callout": "Slowness comes from two completely different places: work on the server and distance on the wire. Each one needs its own fix.",
       "changes": [

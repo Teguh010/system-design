@@ -55,6 +55,14 @@ const en = {
   },
   callout: { insight: 'Key idea', tip: 'Tip', warning: 'Watch out' },
   lab: { reset: 'Reset' },
+  predict: {
+    title: 'Predict first',
+    prompt: 'Before watching what happens, what is your guess?',
+    skip: 'Skip & reveal',
+    correct: 'Spot on',
+    wrong: 'Close — here is why',
+    keys: 'Press <kbd>1</kbd>–<kbd>{n}</kbd> to guess, or <kbd>→</kbd> to skip',
+  },
   chaos: {
     hint: 'click a component to break it',
     title: 'Break it',

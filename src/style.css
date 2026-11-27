@@ -1718,6 +1718,14 @@ a.lesson-card:hover {
   pointer-events: none;
 }
 
+.ent > g {
+  transition: opacity 0.25s ease;
+}
+
+.ent.is-dim > g {
+  opacity: 0.25;
+}
+
 .grad-ent-shadow stop {
   stop-color: var(--shade);
 }
@@ -2167,6 +2175,103 @@ a.lesson-card:hover {
 
 .chaos-card {
   border-color: color-mix(in oklab, var(--bad) 45%, var(--line));
+}
+
+.predict-card {
+  margin: 12px 0 14px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--info);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--k-server) 28%, var(--card));
+}
+
+.predict-card.is-done {
+  border-color: var(--line);
+  background: color-mix(in oklab, var(--card) 75%, var(--paper));
+}
+
+.predict-card.is-good {
+  border-color: color-mix(in oklab, var(--good) 55%, var(--line));
+  background: color-mix(in oklab, var(--k-db) 35%, var(--card));
+}
+
+.predict-card.is-bad {
+  border-color: color-mix(in oklab, var(--warn) 55%, var(--line));
+  background: color-mix(in oklab, var(--k-cache) 35%, var(--card));
+}
+
+.predict-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--info);
+}
+
+.predict-card.is-good .predict-head { color: var(--good); }
+.predict-card.is-bad .predict-head { color: var(--warn); }
+.predict-card.is-skip .predict-head { color: var(--muted); }
+
+.predict-prompt {
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.predict-q {
+  margin: 0 0 10px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.predict-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.predict-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  border: 1.5px solid var(--ink);
+  border-radius: 9px;
+  background: var(--card);
+  cursor: pointer;
+  font-size: 13.5px;
+  line-height: 1.35;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.predict-opt:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.predict-opt kbd {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.predict-keys {
+  margin: 9px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.predict-explain {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
 }
 
 .chaos-targets {

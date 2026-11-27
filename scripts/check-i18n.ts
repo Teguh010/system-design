@@ -55,6 +55,13 @@ for (const entry of allLessons) {
     if (so?.body?.length !== s.body.length) { problems++; console.log(lesson.id, 'step', i + 1, 'body', so?.body?.length, s.body.length); }
     if (!!s.callout !== !!so?.callout) { problems++; console.log(lesson.id, 'step', i + 1, 'callout mismatch'); }
     if ((s.changes?.length ?? 0) !== (so?.changes?.length ?? 0)) { problems++; console.log(lesson.id, 'step', i + 1, 'changes', so?.changes?.length ?? 0, s.changes?.length ?? 0); }
+    if (s.predict) {
+      if (!so?.predict?.question || !so.predict.explain || so.predict.options?.length !== s.predict.options.length) {
+        problems++; console.log(lesson.id, 'step', i + 1, 'predict mismatch');
+      }
+    } else if (so?.predict) {
+      problems++; console.log(lesson.id, 'step', i + 1, 'unexpected predict translation');
+    }
     const chaosKeys = (x: any) => Object.keys(x ?? {}).sort().join(',');
     if (chaosKeys(s.chaos) !== chaosKeys(so?.chaos)) { problems++; console.log(lesson.id, 'step', i + 1, 'chaos keys', chaosKeys(so?.chaos), chaosKeys(s.chaos)); }
     for (const id of Object.keys(s.chaos ?? {}))

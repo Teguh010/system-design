@@ -8,10 +8,12 @@ menyimpang, ubah dulu dokumen ini dan jelaskan alasannya.
 
 ## 1. Apa proyek ini
 
-Kursus system design interaktif. Setiap lesson adalah diagram isometrik yang dijalani step demi step:
-request mengalir, server tumbang, metrik berubah, dan teks di panel kanan menjelaskan kenapa.
-Inspirasinya [Designed to Scale](https://designed-to-scale.vercel.app/). **Semua teks, angka, dan
-skenario harus ditulis sendiri**, jangan menyalin dari situs itu atau dari sumber lain.
+Kursus system design interaktif dan **studio visualisasi YouTube** (yang ke depannya juga mendukung
+topik teknis lain di luar system design). Setiap lesson adalah diagram isometrik yang dijalani step
+demi step: request mengalir, server tumbang, kamera melakukan *spotlight zoom*, metrik berubah, dan
+teks di panel kanan menjelaskan kenapa. Inspirasinya dulu dari [Designed to Scale](https://designed-to-scale.vercel.app/),
+namun alur belajar, fitur studio, dan identitas visualnya diarahkan untuk berbeda jauh dan lebih dalam.
+**Semua teks, angka, dan skenario harus ditulis sendiri**, jangan menyalin dari situs itu atau dari sumber lain.
 
 - Stack saat ini: Next.js App Router + React + TypeScript + next-intl; engine tetap SVG imperatif tanpa
   Canvas/WebGL. Detail migrasi dan batasannya ada di [bagian 8](#8-migrasi-ke-nextjs).
@@ -48,11 +50,11 @@ npm run check:export # periksa HTML lesson setelah build
 - [x] Label pil di garis (`label`, `labelTone`) + panah (`arrow`); pil digambar di atas paket
 - [x] Meter di entitas (`meter: { label, value, tone }`), ikon di permukaan atas (`icon`)
 - [x] Panel "What changed" (catatan `changes` + selisih metrik otomatis)
-- [x] Interaktif (4.5): tebak dulu (`predict`), lab slider (`src/lessons/labs/`), rusak sistemnya (`chaos`) —
-      baru dipakai di `request-lifecycle`
+- [x] Interaktif (4.5): tebak dulu (`predict` di `types.ts` + `ScaleLab.tsx` + `localize.ts`, dipakai di `scale-from-one` & `request-lifecycle`), lab slider (`src/lessons/labs/`), rusak sistemnya (`chaos`)
+- [x] Kamera fokus & spotlight per beat (`Scene.camera.focus` + `Entity.dim` di `stage.ts` & `beats.ts`)
 
 ### Struktur kursus dan UI
-- [x] 9 modul / 40 lesson di `src/course.ts`; lesson yang belum ditulis tampil "soon"
+- [x] 9 modul / 42 lesson di `src/course.ts`; lesson yang belum ditulis tampil "soon"
 - [x] Layout 3 kolom: sidebar kursus | stage + metrik + timeline | panel step + "You'll learn"
 - [x] Home: hero animasi + kartu lesson per modul + progres
 - [x] Responsif: drawer sidebar ≤1280px, satu kolom ≤980px
@@ -66,24 +68,32 @@ npm run check:export # periksa HTML lesson setelah build
 ### Lesson (EN + ID)
 | # | Modul | Lesson | id | Status |
 |---|---|---|---|---|
+| 01 | Foundations | From One Server to Scale | `scale-from-one` | [x] |
 | 01 | Foundations | How a Request Works | `request-lifecycle` | [x] |
 | 01 | Foundations | Latency & Throughput | `latency-throughput` | [x] |
-| 01 | Foundations | Napkin Math | `napkin-math` | [x] |
 | 02 | Scaling | Vertical vs Horizontal Scaling | `vertical-horizontal` | [x] |
 | 02 | Scaling | Load Balancing | `load-balancing` | [x] |
 | 02 | Scaling | Stateless Services | `stateless` | [x] |
 | 02 | Scaling | Caching | `caching` | [x] |
 | 02 | Scaling | CDNs | `cdn` | [x] |
-| 09 | Whole Systems | Design a URL Shortener | `url-shortener` | [x] |
+| 02 | Scaling | Napkin Math | `napkin-math` | [x] |
 | 03 | Data & Storage | SQL vs NoSQL | `sql-nosql` | [x] |
 | 03 | Data & Storage | Indexes | `indexes` | [x] |
-| 03 | Data & Storage | Storage Engines | `storage-engines` | [x] |
 | 03 | Data & Storage | Replication | `replication` | [x] |
 | 03 | Data & Storage | Sharding | `sharding` | [x] |
+| 03 | Data & Storage | Storage Engines | `storage-engines` | [x] |
+| 09 | Whole Systems | Design a URL Shortener | `url-shortener` | [x] |
 
-**14 / 40 selesai.** Sisanya ada di bagian 6.
+**15 / 42 selesai.** Sisanya ada di bagian 6.
 
 ### Riwayat revisi penting
+- **Restrukturisasi Foundations & Fitur Studio (2026-11):**
+  - Episode 1 kursus kini dibuka dengan `scale-from-one` (*Dari 1 Server ke Skala Besar*: `kopikita.app`, 1 mesin → viral → pisah 2-tier → 4 kompas trade-off → 3 bottleneck → SPOF `chaos` → peta kursus), bukan lagi `request-lifecycle`.
+  - `napkin-math` dipindah ke akhir Modul `02 · Scaling` agar pembelajar mengenal LB/Cache/CDN dulu sebelum menghitungnya.
+  - Slot #4 di `01 · Foundations` ditambahkan untuk `hardware-bottlenecks` (`soon`: CPU vs RAM vs Disk vs Network).
+  - Urutan `03 · Data & Storage` dirapikan (`transactions` dan `cap` didekatkan dengan `sql-nosql` dan `replication`).
+  - `predict` (4.5) diimplementasikan di `ScaleLab.tsx` (`stl:predict`, shortcut `1`–`9` & `→`, otomatis dilewati di mode `Wide` / `?record=1`), serta `camera.focus` + `Entity.dim` ditambahkan di `stage.ts` & `beats.ts`.
+  - `request-lifecycle` dirapikan: konsistensi hitungan Step 6 (`100 + 55 = 155 ms` TTFB, `+15 ms = 170 ms`), `predict` di Step 8 (paradoks CPU 15% pada N+1), `camera.focus` di beat DNS & N+1, serta perbaikan paragraf EN yang tertinggal di `i18n/en/request-lifecycle.ts`.
 - `replication` pilot **lebih baik dari referensi**: step 1 satu DB tanpa replica, kartu on-call,
   `predict` (step 2 & 6), `chaos` (step 3), metrik `reads on primary`, glosarium stale read / RYW / split brain.
 - `request-lifecycle` jadi **lesson acuan visual (4.1b + 4.1c + 4.1d)**: konteks tetap tampil, label di garis,
@@ -539,19 +549,30 @@ Urutan pengerjaan yang disarankan: modul 03 → 04 → 05 → 06 → 07 → 08 �
 Skenario di bawah ini hanya usulan. Boleh diganti, asalkan tetap satu skenario konkret per lesson dan
 tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mungkin perlu ditambahkan.
 
+### 01 · Foundations (3/4)
+| Lesson | id | Usulan skenario / poin | Engine |
+|---|---|---|---|
+| [x] From One Server to Scale | `scale-from-one` | `kopikita.app`: 1 box → viral 500/s → pisah 2-tier → 4 kompas trade-off → 3 bottleneck → SPOF → peta kursus | `camera.focus`, `dim`, `predict`, `chaos` |
+| [x] How a Request Works | `request-lifecycle` | `news.example`: DNS, handshake, TTFB, HTTP/2, N+1, pembaca jauh, lab slider | `beats`, `predict`, `chaos`, `lab` |
+| [x] Latency & Throughput | `latency-throughput` | Tiket konser: kapasitas, antrean, knee curve, p99 (ke depan disederhanakan: pindahkan fan-out/batching ke modul lanjutan) | meter & antrean |
+| [ ] CPU, Memory, Disk & Network | `hardware-bottlenecks` | Angka kecepatan hardware (ns vs µs vs ms) + CPU-bound vs I/O-bound sebagai jembatan ke Scaling/Caching | — |
+
+### 02 · Scaling (6/6)
+Semua materi dasar Scaling (`vertical-horizontal`, `load-balancing`, `stateless`, `caching`, `cdn`, dan `napkin-math`) sudah lengkap.
+
 ### 03 · Data & Storage (5/11)
 | Lesson | id | Usulan skenario / poin | Engine |
 |---|---|---|---|
 | [x] SQL vs NoSQL | `sql-nosql` | Aplikasi event/tiket: relasi & transaksi vs dokumen/key-value; pola akses menentukan pilihan | — |
 | [x] Indexes | `indexes` | Pencarian pesanan per email: full scan vs B-tree, index komposit, biaya tulis | bentuk **tree/B-tree** (node bertingkat) |
-| [x] Storage Engines | `storage-engines` | B-tree vs LSM (memtable, SSTable, compaction), write vs read amplification | bentuk **tumpukan file/level** (`stack`) |
+| [ ] Transactions & Isolation | `transactions` | Transfer saldo: ACID, anomali (lost update, dirty read), level isolasi | — |
 | [x] Replication | `replication` | Leader + follower, read replica, replication lag, failover, sinkron vs asinkron | — |
+| [ ] CAP & Consistency | `cap` | Partisi jaringan antar-region; CP vs AP; strong vs eventual; read-your-writes | link **terputus** (partition) |
 | [x] Sharding | `sharding` | Framebag metadata foto: range vs hash, hot tenant, scatter-gather, resharding | — |
 | [ ] Consistent Hashing | `consistent-hashing` | Cache cluster bertambah node: mod N vs ring, virtual node | bentuk **hash ring** |
 | [ ] Unique IDs at Scale | `unique-ids` | Auto-increment vs UUID vs Snowflake (timestamp + node + seq), pengurutan | — |
-| [ ] CAP & Consistency | `cap` | Partisi jaringan antar-region; CP vs AP; strong vs eventual; read-your-writes | link **terputus** (partition) |
+| [x] Storage Engines | `storage-engines` | B-tree vs LSM (memtable, SSTable, compaction), write vs read amplification | bentuk **tumpukan file/level** (`stack`) |
 | [ ] Consensus & Leaders | `consensus` | Pemilihan leader (Raft-like), quorum, split brain, term | — |
-| [ ] Transactions & Isolation | `transactions` | Transfer saldo: ACID, anomali (lost update, dirty read), level isolasi | — |
 | [ ] Files & Media | `files` | Upload video: object storage, presigned URL, transcoding async, CDN | — |
 
 ### 04 · Communication (0/4)
@@ -614,11 +635,19 @@ tidak sama dengan lesson lain. Kolom "Engine" mencatat bentuk atau fitur yang mu
 - [x] Migrasi UI ke Next.js (bagian 8).
 - [x] **Glosarium hover (4.6):** `entries.ts` + `enrich.ts` + style tooltip; panel step (+ callout / predict / chaos)
 
-### Fitur interaktif (4.5) — sebarkan ke lesson lain setelah diuji di `request-lifecycle`
-- [x] `request-lifecycle`: predict di step 3, 8, 9; chaos di step 5; lab di step 10
-- [ ] Evaluasi dengan pembaca dulu (apakah pertanyaan dan lab membantu?) sebelum menyebarkan
-- [ ] `latency-throughput` (lab: arrival rate vs jumlah worker → antrean), `load-balancing` (chaos: matikan server),
+### Fitur interaktif (4.5) — sebarkan ke lesson lain
+- [x] Implementasi `predict` di `ScaleLab.tsx` (`stl:predict`, dilewati otomatis saat `Wide` / `?record=1`)
+- [x] `scale-from-one`: predict di step 6; chaos di step 6; `camera.focus` + `dim` di step 3, 5, 7
+- [x] `request-lifecycle`: predict di step 8; chaos di step 5; lab di step 10; `camera.focus` di step 2 & 8
+- [ ] Evaluasi dengan pembaca dulu sebelum menyebarkan ke seluruh lesson lama
+- [ ] `latency-throughput` (sederhanakan materi pemula + lab: arrival rate vs jumlah worker → antrean), `load-balancing` (chaos: matikan server),
       `caching` (lab: hit rate → beban DB), `cdn` (lab: jarak pembaca)
+
+### Diferensiasi Visual & Studio YouTube (roadmap produk)
+- [ ] **Identitas visual & layout Stage-First:** tema Dark Studio Blueprint untuk video (`?record=1` / `?studio=1`), routing link orthogonal/siku, dan paket berlabel (`DNS`, `GET`, `SQL`) agar tidak terkesan meniru *Designed to Scale*
+- [ ] **Multi-Pane Synchronized Views:** Live Waterfall / Flamegraph bar + Synchronized HTML Inspector + mode *Split-Screen Before/After* per beat
+- [ ] **Dual-Window Presenter Mode:** `?presenter=1` (teleprompter + catatan beat + kontrol) tersinkron ke `?record=1` lewat `BroadcastChannel`
+- [ ] **Generalisasi Engine Multi-Pelajaran:** tambah mode tampilan `sequence` (swimlane waktu) dan `structure` (array/memory/stack/graph) selain diagram node isometrik
 
 ### Ide fitur (opsional, setelah lesson)
 - [ ] Search ⌘K (judul lesson, step, istilah dari kamus 4.6)

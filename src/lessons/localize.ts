@@ -5,6 +5,7 @@ import type { Entity, Lesson, LessonOverlay, MetricValue, Scene, SceneBeat } fro
 const idSourceLessons = new Set(['request-lifecycle']);
 
 const idOverlays: Record<string, () => Promise<{ default: LessonOverlay }>> = {
+  'id/scale-from-one': () => import('./i18n/id/scale-from-one.ts'),
   'id/latency-throughput': () => import('./i18n/id/latency-throughput.ts'),
   'id/napkin-math': () => import('./i18n/id/napkin-math.ts'),
   'id/vertical-horizontal': () => import('./i18n/id/vertical-horizontal.ts'),
@@ -77,6 +78,14 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
         body: step.body.map((p, j) => so?.body?.[j] ?? p),
         ...(step.callout && { callout: { ...step.callout, text: so?.callout ?? step.callout.text } }),
         ...(step.changes && { changes: step.changes.map((c, j) => so?.changes?.[j] ?? c) }),
+        ...(step.predict && {
+          predict: {
+            ...step.predict,
+            question: so?.predict?.question ?? step.predict.question,
+            options: step.predict.options.map((opt, j) => so?.predict?.options?.[j] ?? opt),
+            explain: so?.predict?.explain ?? step.predict.explain,
+          },
+        }),
         ...(step.metrics && { metrics: Object.fromEntries(Object.entries(step.metrics).map(([k, v]) => [k, metric(v)])) }),
         ...(step.chaos && {
           chaos: Object.fromEntries(Object.entries(step.chaos).map(([id, c]) => [id, {

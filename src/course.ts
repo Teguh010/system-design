@@ -5,6 +5,7 @@ import { latencyThroughput } from './lessons/latency-throughput.ts';
 import { loadBalancing } from './lessons/load-balancing.ts';
 import { napkinMath } from './lessons/napkin-math.ts';
 import { replication } from './lessons/replication.ts';
+import { scaleFromOne } from './lessons/scale-from-one.ts';
 import { sharding } from './lessons/sharding.ts';
 import { requestLifecycle } from './lessons/request-lifecycle.ts';
 import { indexes } from './lessons/indexes.ts';
@@ -42,9 +43,10 @@ export const course: CourseModule[] = [
     title: { en: 'Foundations', id: 'Dasar-dasar' },
     color: '#d9b77a',
     lessons: [
+      ready(scaleFromOne, 'Dari 1 Server ke Skala Besar'),
       ready(requestLifecycle, 'Bagaimana sebuah request bekerja?', 'How a Request Works'),
       ready(latencyThroughput, 'Latency & Throughput'),
-      ready(napkinMath, 'Hitungan Kasar (Napkin Math)'),
+      soon('hardware-bottlenecks', 'CPU, Memory, Disk & Network', 'CPU, Memori, Disk & Jaringan'),
     ],
   },
   {
@@ -57,6 +59,7 @@ export const course: CourseModule[] = [
       ready(stateless, 'Layanan Stateless'),
       ready(caching, 'Caching'),
       ready(cdns, 'CDN'),
+      ready(napkinMath, 'Hitungan Kasar (Napkin Math)'),
     ],
   },
   {
@@ -66,14 +69,14 @@ export const course: CourseModule[] = [
     lessons: [
       ready(sqlNosql, 'SQL vs NoSQL'),
       ready(indexes, 'Indeks (Indexes)'),
-      ready(storageEngines, 'Mesin Penyimpanan'),
+      soon('transactions', 'Transactions & Isolation', 'Transaksi & Isolasi'),
       ready(replication, 'Replikasi'),
+      soon('cap', 'CAP & Consistency', 'CAP & Konsistensi'),
       ready(sharding, 'Sharding'),
       soon('consistent-hashing', 'Consistent Hashing'),
       soon('unique-ids', 'Unique IDs at Scale', 'ID Unik dalam Skala Besar'),
-      soon('cap', 'CAP & Consistency', 'CAP & Konsistensi'),
+      ready(storageEngines, 'Mesin Penyimpanan'),
       soon('consensus', 'Consensus & Leaders', 'Konsensus & Leader'),
-      soon('transactions', 'Transactions & Isolation', 'Transaksi & Isolasi'),
       soon('files', 'Files & Media', 'File & Media'),
     ],
   },

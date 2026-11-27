@@ -64,7 +64,7 @@ export const requestLifecycle: Lesson = {
     { id: 'download', label: 'download' },
     { id: 'total', label: 'halaman siap' },
   ],
-  legend: ['req', 'res', ['ping', 'cari IP / handshake'], ['lambat', 'lambat']],
+  legend: ['req', 'res', ['ping', 'cari IP / handshake'], ['slow', 'lambat']],
   goals: [
     { text: 'Mengubah nama domain menjadi alamat lewat DNS', step: 2 },
     { text: 'Menghitung round trip sebelum data mulai bergerak', step: 3 },
@@ -107,7 +107,7 @@ export const requestLifecycle: Lesson = {
               lines: ['✓ di laptopmu:    ~0,4 dtk', '> sebagian lain:   2,0 dtk+', '# ikuti 1 klik langkah demi langkah'],
             },
           },
-          flows: [{ route: ['bw'], kind: 'lambat', rate: 0.45, bounce: true }],
+          flows: [{ route: ['bw'], kind: 'slow', rate: 0.45, bounce: true }],
         },
         {
           label: 'Langkah demi langkah',
@@ -181,10 +181,12 @@ export const requestLifecycle: Lesson = {
         {
           label: 'Tanya DNS',
           duration: 2800,
+          camera: { focus: ['browser', 'resolver', 'auth', 'trace'] },
           entities: {
             browser: { badge: { text: 'bertanya ke DNS', tone: 'info' } },
             resolver: { focus: true, badge: { text: 'belum disimpan', tone: 'warn' } },
             auth: { focus: true },
+            web: { dim: true },
             trace: {
               title: 'Cari DNS · langkah 3',
               lines: ['# 1. cache browser: kosong', '# 2. cache OS:      kosong', '> 3. tanya DNS → 203.0.113.7', '# 4. simpan 5 mnt (TTL)'],
@@ -197,6 +199,7 @@ export const requestLifecycle: Lesson = {
           entities: {
             browser: { focus: true, badge: { text: '203.0.113.7', tone: 'good' } },
             resolver: { badge: { text: 'tersimpan · 5 mnt', tone: 'good' } },
+            web: { dim: false },
             trace: {
               lines: ['# 1. cache browser: kosong', '# 2. cache OS:      kosong', '✓ 3. tanya DNS → 203.0.113.7', '> 4. simpan 5 mnt (TTL)'],
             },
@@ -437,9 +440,9 @@ export const requestLifecycle: Lesson = {
       title: 'Byte pertama mulai pulang ke layar',
       body: [
         'Sejak kamu menekan Enter, stopwatch sudah berjalan, padahal belum ada satu byte HTML pun yang sampai.',
-        'Pertama, ada <b>DNS</b>, jabat tangan <b>TCP</b>, dan <b>TLS</b>. Ketiganya memakan waktu sekitar <b>100 ms</b>. Setelah itu browser mengirim request, dan server memprosesnya di data center. Ini menambah sekitar <b>40 ms</b> lagi. Jadi, <b>140 ms</b> sudah terpakai sebelum server mulai mengirim jawabannya.',
-        'Lalu byte pertama dari HTML itu dikirim dan menempuh perjalanan pulang ke browser, sekitar <b>15 ms</b>. Saat byte itu tiba, total waktunya <b>155 ms</b>. Angka inilah yang disebut <b>TTFB</b>, singkatan dari <b>time to first byte</b>: semua waktu tunggu tadi, ditambah perjalanan pulang untuk satu byte pertama.',
-        'Tapi browser tidak menunggu HTML-nya selesai diunduh. Begitu byte-byte pertama masuk, ia langsung mulai membaca dan menggambar halaman. Nah, di dalam HTML itu ada rujukan ke 40 file lain. Itulah yang akan kita bahas selanjutnya.',
+        'Pertama, ada <b>DNS</b>, jabat tangan <b>TCP</b>, dan <b>TLS</b>. Ketiganya memakan waktu sekitar <b>100 ms</b>. Setelah itu browser mengirim request (15 ms), dan server memprosesnya di data center (25 ms) — total <b>40 ms</b> lagi. Jadi, <b>140 ms</b> sudah terpakai sebelum server mulai mengirim jawabannya.',
+        'Lalu byte pertama dari HTML itu dikirim dan menempuh perjalanan pulang ke browser, sekitar <b>15 ms</b>. Saat byte itu tiba, total waktunya <b>155 ms</b> — angka inilah yang disebut <b>TTFB</b> (<i>time to first byte</i>). Di metrik atas, 15 ms pergi + 25 ms kerja + 15 ms byte pertama pulang dijumlahkan menjadi <b>55 ms</b> pada kolom <code>request + server</code>.',
+        'Tapi browser tidak menunggu sisa HTML selesai diunduh (+15 ms lagi di kolom download, sehingga total sementara <b>170 ms</b>). Begitu byte pertama masuk, ia langsung mulai membaca halaman — dan menemukan rujukan ke 40 file lain yang akan kita bahas selanjutnya.',
       ],
       callout: { kind: 'tip', text: 'TTFB itu patokan seberapa cepat backend dan koneksimu. Semua yang terjadi setelahnya adalah urusan mengunduh file tambahan dan menggambar layar.' },
       changes: ['+ byte pertama HTML mendarat di browser pada ~155 ms', '~ query database sudah selesai; HTML mengalir balik satu arah'],
@@ -665,6 +668,16 @@ export const requestLifecycle: Lesson = {
       short: 'Query lambat',
       chapter: 'problem',
       title: 'Petunjuk #1: Kenapa artikel ramai macet (N+1)',
+      predict: {
+        question: 'Artikel ramai ini membuat waktu server melonjak dari 25 ms menjadi 435 ms karena 41 query ke database. Menurutmu, apa yang terjadi pada CPU web server?',
+        options: [
+          'CPU melonjak ke 95–100% karena memproses banyak komentar',
+          'CPU justru turun ke ~15% karena server lebih banyak diam menunggu database',
+          'CPU tetap persis di 20% tanpa perubahan',
+        ],
+        answer: 1,
+        explain: 'Web server tidak menghitung berat — ia mengirim satu query lalu berhenti menunggu jawaban database sebelum lanjut ke query berikutnya. Karena itu CPU malah nganggur di ~15%.',
+      },
       body: [
         'Situs yang sama, di laptopmu, tetap cepat: sekitar <b>400 ms</b>. Tapi di produksi, pembaca mengeluh. Keluhannya mengumpul di satu artikel saja: peringatan badai, dengan komentar yang sangat panjang.',
         'Coba bayangkan kamu menyuruh seseorang mengambil 40 buku di perpustakaan. Cara pertama: dia pergi sekali, lalu pulang membawa semuanya. Cara kedua: dia bolak-balik 40 kali, satu buku setiap perjalanan. Hasilnya sama, tapi cara kedua jauh lebih lama.',
@@ -724,7 +737,10 @@ export const requestLifecycle: Lesson = {
         {
           label: '40× loop penulis',
           duration: 2800,
+          camera: { focus: ['web', 'db', 'trace'] },
           entities: {
+            browser: { dim: true },
+            resolver: { dim: true },
             web: { ...CPU(0.18), focus: true, badge: { text: 'loop 40 penulis', tone: 'warn' } },
             db: { focus: true, badge: { text: '41 query · 410 ms', tone: 'bad' } },
             trace: {
@@ -739,14 +755,15 @@ export const requestLifecycle: Lesson = {
             },
           },
           links: { wd: { label: 'baca penulis × 40', labelTone: 'bad' } },
-          flows: [{ route: ['wd'], kind: 'lambat', rate: 1.4, bounce: true, speed: 90, once: 8 }],
+          flows: [{ route: ['wd'], kind: 'slow', rate: 1.4, bounce: true, speed: 90, once: 8 }],
           metrics: { server: { v: '440 ms', tone: 'bad' }, total: '410 ms' },
         },
         {
           label: 'Total halaman ~785 ms',
           duration: 2200,
           entities: {
-            browser: { focus: true, badge: { text: '~785 ms · ~2×', tone: 'bad' } },
+            browser: { dim: false, focus: true, badge: { text: '~785 ms · ~2×', tone: 'bad' } },
+            resolver: { dim: false },
             web: { ...CPU(0.18), badge: { text: 'loop selesai', tone: 'warn' } },
             db: { badge: { text: '41 query · 410 ms', tone: 'bad' } },
             trace: {
@@ -761,7 +778,7 @@ export const requestLifecycle: Lesson = {
             },
           },
           links: { bw: { label: 'halaman masih loading…', labelTone: 'bad' } },
-          flows: [{ route: ['bw'], kind: 'lambat', rate: 0.6, bounce: true, speed: 70, once: 2 }],
+          flows: [{ route: ['bw'], kind: 'slow', rate: 0.6, bounce: true, speed: 70, once: 2 }],
           metrics: { server: { v: '440 ms', tone: 'bad' }, total: { v: '785 ms', tone: 'bad' } },
         },
         {
@@ -785,7 +802,7 @@ export const requestLifecycle: Lesson = {
           links: { wd: { label: 'baca penulis × 40', labelTone: 'bad' } },
           flows: [
             { route: ['bw'], rate: 0.4, bounce: true, speed: 90 },
-            { route: ['wd'], kind: 'lambat', rate: 1.2, bounce: true, speed: 90 },
+            { route: ['wd'], kind: 'slow', rate: 1.2, bounce: true, speed: 90 },
           ],
           metrics: { server: { v: '440 ms', tone: 'bad' }, total: { v: '785 ms', tone: 'bad' } },
         },
@@ -870,7 +887,7 @@ export const requestLifecycle: Lesson = {
             },
           },
           links: { fw: { label: 'RTT 300 ms (10×)', labelTone: 'bad' }, bw: { label: 'RTT 30 ms', labelTone: 'good' } },
-          flows: [{ route: ['fw'], kind: 'lambat', rate: 0.7, bounce: true, speed: 45, once: 2 }],
+          flows: [{ route: ['fw'], kind: 'slow', rate: 0.7, bounce: true, speed: 45, once: 2 }],
           metrics: { server: '25 ms', total: '?' },
         },
         {
@@ -928,7 +945,7 @@ export const requestLifecycle: Lesson = {
               ],
             },
           },
-          flows: [{ route: ['fw'], kind: 'lambat', rate: 1.1, bounce: true, speed: 45, once: 6 }],
+          flows: [{ route: ['fw'], kind: 'slow', rate: 1.1, bounce: true, speed: 45, once: 6 }],
           metrics: { download: { v: '1.000 ms', tone: 'bad' }, total: '1,900 ms' },
         },
         {
@@ -969,7 +986,7 @@ export const requestLifecycle: Lesson = {
               ],
             },
           },
-          flows: [{ route: ['fw'], kind: 'lambat', rate: 0.4, bounce: true, speed: 45 }],
+          flows: [{ route: ['fw'], kind: 'slow', rate: 0.4, bounce: true, speed: 45 }],
           metrics: {
             dns: { v: '100 ms', tone: 'warn' },
             connect: { v: '600 ms', tone: 'bad' },
@@ -1143,7 +1160,7 @@ export const requestLifecycle: Lesson = {
               ],
             },
           },
-          flows: [{ route: ['fw'], kind: 'lambat', rate: 0.4, bounce: true, once: 2, speed: 45 }],
+          flows: [{ route: ['fw'], kind: 'slow', rate: 0.4, bounce: true, once: 2, speed: 45 }],
         },
         {
           label: 'Kecilkan dulu',
@@ -1238,7 +1255,7 @@ export const requestLifecycle: Lesson = {
         },
         flows: [
           { route: ['bw', 'wd'], rate: 0.6, bounce: true },
-          { route: ['fw'], kind: 'lambat', rate: 0.35, bounce: true, speed: 45 },
+          { route: ['fw'], kind: 'slow', rate: 0.35, bounce: true, speed: 45 },
         ],
       }),
     },

@@ -28,7 +28,8 @@ const step: Step = {
     },
     {
       label: 'ask DNS',
-      entities: { browser: { focus: true } },
+      camera: { focus: ['browser'] },
+      entities: { browser: { focus: true }, web: { dim: true } },
       flows: [{ route: ['bw'], kind: 'ping', rate: 1, once: 1 }],
     },
     {
@@ -48,6 +49,8 @@ test('resolveBeat patches scene cleanly per beat and carries metrics across beat
 
   const b1 = resolveBeat(step, 1);
   assert.equal(b1.scene.entities.browser?.focus, true);
+  assert.equal(b1.scene.entities.web?.dim, true);
+  assert.deepEqual(b1.scene.camera?.focus, ['browser']);
   assert.equal(b1.scene.entities.browser?.badge?.text, 'cache: miss');
   assert.equal(b1.scene.links?.bw, undefined);
   assert.equal(b1.scene.flows?.[0]?.once, 1);
@@ -55,6 +58,7 @@ test('resolveBeat patches scene cleanly per beat and carries metrics across beat
 
   const b2 = resolveBeat(step, 2);
   assert.equal(b2.metrics.dns, '40 ms');
+  assert.equal(b2.scene.camera, undefined);
   assert.equal(b2.scene.flows?.[0]?.rate, 1);
   assert.equal(b2.scene.entities.browser?.focus, true);
   assert.equal(b2.scene.entities.browser?.badge?.text, 'cache: miss');

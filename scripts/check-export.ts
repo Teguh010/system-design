@@ -15,7 +15,8 @@ for (const locale of routing.locales) {
     for (const [index, step] of lesson.steps.entries()) {
       const file = new URL(`../out/${locale}/lessons/${id}/${index + 1}/index.html`, import.meta.url);
       const html = readFileSync(file, 'utf8');
-      if (!html.includes(`<html lang="${locale}"`) || !html.includes(`<h2>${escapeHtml(step.title)}</h2>`)) {
+      const h2 = /<h2>([\s\S]*?)<\/h2>/.exec(html)?.[1]?.replace(/<[^>]+>/g, '');
+      if (!html.includes(`<html lang="${locale}"`) || h2 !== escapeHtml(step.title)) {
         throw new Error(`Missing localized lesson content in ${file.pathname}`);
       }
       count++;

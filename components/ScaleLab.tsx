@@ -137,11 +137,14 @@ function valuesAt(lesson: Lesson, i: number): Record<string, MetricValue> {
 
 /** `?record=1` hides everything but the title, metrics and diagram, for screen recording. */
 function useRecordMode() {
+  const [record, setRecord] = useState(false);
   useEffect(() => {
     const on = new URLSearchParams(window.location.search).get('record') === '1';
+    setRecord(on);
     document.documentElement.classList.toggle('is-record', on);
     return () => document.documentElement.classList.remove('is-record');
   }, []);
+  return record;
 }
 
 type Num = { pre: string; n: number; dec: number; grouped: boolean; post: string };
@@ -257,6 +260,31 @@ function ChaosCard({ step, broken, onToggle, onRepair }: { step: Step; broken: s
   </div>;
 }
 
+function PredictCard({ predict, choice, onPick, onSkip }: {
+  predict: NonNullable<Step['predict']>; choice: number | undefined; onPick: (i: number) => void; onSkip: () => void;
+}) {
+  const t = useTranslations();
+  const answered = choice !== undefined;
+  const correct = choice === predict.answer;
+  if (!answered) {
+    return <div className="predict-card">
+      <div className="predict-head"><span>{t('predict.title')}</span><button type="button" className="btn small" onClick={onSkip}>{t('predict.skip')}</button></div>
+      <p className="predict-prompt">{t('predict.prompt')}</p>
+      <p className="predict-q"><GlossaryHtml html={predict.question} /></p>
+      <div className="predict-opts">{predict.options.map((opt, i) => (
+        <button key={i} type="button" className="predict-opt" onClick={() => onPick(i)}>
+          <kbd>{i + 1}</kbd><span><GlossaryPlain text={opt} /></span>
+        </button>
+      ))}</div>
+      <p className="predict-keys">{t.rich('predict.keys', { n: predict.options.length, kbd: (chunks) => <kbd>{chunks}</kbd> })}</p>
+    </div>;
+  }
+  return <div className={`predict-card is-done ${choice === -1 ? 'is-skip' : correct ? 'is-good' : 'is-bad'}`}>
+    <div className="predict-head"><span>{choice === -1 ? t('predict.title') : correct ? `✓ ${t('predict.correct')}` : t('predict.wrong')}</span></div>
+    <p className="predict-explain"><GlossaryHtml html={predict.explain} /></p>
+  </div>;
+}
+
 function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress, onStepNavigation, onToggleSidebar }: {
   lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; wide: boolean; onProgress: () => void; onStepNavigation: () => void; onToggleSidebar: () => void;
 }) {
@@ -266,33 +294,49 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   const timeline = useRef<HTMLOListElement>(null);
   const firstStep = useRef(true);
   const stepCard = useRef<HTMLDivElement>(null);
-  useRecordMode();
+  const record = useRecordMode();
   const [paused, setPaused] = useState(false);
   const [activeStep, setActiveStep] = useState(step);
   const index = Math.max(0, Math.min(lesson.steps.length - 1, Number.isFinite(activeStep) ? Math.trunc(activeStep) - 1 : 0));
   const current = lesson.steps[index]!;
   const n = lesson.steps.length;
   const seen = seenFor(progress, lesson.id);
-  const values = valuesAt(lesson, index);
+
+  const [predictions, setPredictions] = useState<Record<string, number>>(() => load<Record<string, number>>('predict', {}));
+  const predictKey = `${lesson.id}:${index}`;
+  const predictChoice = current.predict ? predictions[predictKey] : undefined;
+  const gated = !!current.predict && predictChoice === undefined && !wide && !record;
+  const displayIndex = gated && index > 0 ? index - 1 : index;
+  const displayStep = lesson.steps[displayIndex]!;
+  const values = valuesAt(lesson, displayIndex);
+  const answerPredict = useCallback((choice: number) => {
+    setPredictions((prev) => {
+      const next = { ...prev, [predictKey]: choice };
+      save('predict', next);
+      return next;
+    });
+  }, [predictKey]);
 
   const stageGlossary = useMemo(
     () =>
-      glossaryInProse(
-        current.title,
-        ...current.body,
-        current.callout?.text ?? '',
-      ),
-    [current],
+      gated
+        ? []
+        : glossaryInProse(
+            current.title,
+            ...current.body,
+            current.callout?.text ?? '',
+          ),
+    [current, gated],
   );
 
   // Beats: optional micro-animation keyframes inside a single step.
-  const beats = current.beats ?? [];
-  const lab = labFor(lesson.id, index + 1);
+  const beats = displayStep.beats ?? [];
+  const lab = gated ? undefined : labFor(lesson.id, index + 1);
   const showLab = !!lab && !wide;
   const hasBeats = beats.length > 0;
   const [beatIndex, setBeatIndex] = useState(0);
   useEffect(() => { setBeatIndex(0); }, [index]);
-  const resolved = useMemo(() => resolveBeat(current, beatIndex), [current, beatIndex]);
+  const resolved = useMemo(() => resolveBeat(displayStep, beatIndex), [displayStep, beatIndex]);
 
   // Lab: metrics follow the sliders live; the diagram follows shortly after so packets keep flowing.
   const defaults = useMemo(() => Object.fromEntries((lab?.controls ?? []).map((c) => [c.id, c.value])), [lab]);
@@ -309,7 +353,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   // Chaos: entities the reader has broken on this step, in the order they were broken.
   const [broken, setBroken] = useState<string[]>([]);
   useEffect(() => setBroken([]), [index, wide]);
-  const canBreak = !!current.chaos && !wide;
+  const canBreak = !!current.chaos && !wide && !gated;
   const toggleBroken = useCallback((id: string) => {
     if (!current.chaos?.[id] || wide) return;
     setBroken((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
@@ -328,7 +372,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     values,
     resolved.metrics,
     ...(showLab && labResult ? [labResult.metrics] : []),
-    ...broken.map((id) => current.chaos?.[id]?.metrics),
+    ...(gated ? [] : broken.map((id) => current.chaos?.[id]?.metrics)),
   );
   useEffect(() => setActiveStep(step), [step]);
   useEffect(() => {
@@ -391,7 +435,11 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
       const target = ev.target;
       if (ev.metaKey || ev.ctrlKey || ev.altKey || (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))) return;
       const key = ev.key.toLowerCase();
-      if (key === 'arrowright' || key === 'pagedown') nav(1);
+      if (gated && /^[1-9]$/.test(key) && current.predict && Number(key) <= current.predict.options.length) {
+        answerPredict(Number(key) - 1);
+      } else if (gated && key === 'arrowright') {
+        answerPredict(-1);
+      } else if (key === 'arrowright' || key === 'pagedown') nav(1);
       else if (key === 'arrowleft' || key === 'pageup') nav(-1);
       else if ((key === 'arrowdown' || key === '.') && hasBeats) stepBeat(1);
       else if ((key === 'arrowup' || key === ',') && hasBeats) stepBeat(-1);
@@ -404,7 +452,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [nav, togglePause, replay, stepBeat, hasBeats, onToggleSidebar]);
+  }, [nav, togglePause, replay, stepBeat, hasBeats, onToggleSidebar, gated, current.predict, answerPredict]);
   return <GlossaryScope locale={locale} className="lesson">
     <section className={`center${showLab || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
@@ -443,20 +491,25 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     </section>
     <aside className="side"><div className="step-card" ref={stepCard}><div className="step-top"><span className="step-no">{t('step.label', { i: index + 1, n })}</span><span className={`chip ch-${current.chapter}`}>{t(`chapter.${current.chapter}`)}</span></div>
       <article className="step enter" aria-live="polite" key={index}><h2><GlossaryPlain text={current.title} /></h2>
-        <div className="step-body">
-          {current.body.map((p, i) =>
-            p.trimStart().startsWith('<table')
-              ? <div key={i}><GlossaryHtml html={p} /></div>
-              : <p key={i}><GlossaryHtml html={p} /></p>,
-          )}
-          {current.callout && (
-            <aside className={`callout co-${current.callout.kind}`}>
-              <b>{t(`callout.${current.callout.kind}`)}</b>
-              <span><GlossaryHtml html={current.callout.text} /></span>
-            </aside>
-          )}
-          <Changes lesson={lesson} index={index} />
-        </div>
+        {current.predict && (
+          <PredictCard predict={current.predict} choice={predictChoice} onPick={answerPredict} onSkip={() => answerPredict(-1)} />
+        )}
+        {!gated && (
+          <div className="step-body">
+            {current.body.map((p, i) =>
+              p.trimStart().startsWith('<table')
+                ? <div key={i}><GlossaryHtml html={p} /></div>
+                : <p key={i}><GlossaryHtml html={p} /></p>,
+            )}
+            {current.callout && (
+              <aside className={`callout co-${current.callout.kind}`}>
+                <b>{t(`callout.${current.callout.kind}`)}</b>
+                <span><GlossaryHtml html={current.callout.text} /></span>
+              </aside>
+            )}
+            <Changes lesson={lesson} index={index} />
+          </div>
+        )}
       </article>
       <nav className="step-nav"><button className="btn prev" type="button" disabled={index === 0} onClick={() => nav(-1)}>← {t('step.back')}</button><button className="btn primary next" type="button" onClick={() => nav(1)}>{lesson.steps[index + 1] ? `${t('step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${t('step.finish')} ✓`}</button></nav>
       <p className="keys">{t.rich('step.keys', { kbd: (chunks) => <kbd>{chunks}</kbd> })}</p>

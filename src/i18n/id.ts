@@ -57,6 +57,14 @@ const id = {
   },
   callout: { insight: 'Ide kunci', tip: 'Tips', warning: 'Hati-hati' },
   lab: { reset: 'Reset' },
+  predict: {
+    title: 'Tebak dulu',
+    prompt: 'Sebelum lihat hasilnya di diagram, menurutmu apa yang terjadi?',
+    skip: 'Lewati & buka',
+    correct: 'Tepat sekali',
+    wrong: 'Hampir — ini alasannya',
+    keys: 'Tekan <kbd>1</kbd>–<kbd>{n}</kbd> untuk menebak, atau <kbd>→</kbd> untuk lewati',
+  },
   chaos: {
     hint: 'klik sebuah komponen untuk merusaknya',
     title: 'Rusak sistemnya',

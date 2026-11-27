@@ -195,7 +195,7 @@ export class Stage {
 
   private applyEntClass(live: LiveEnt) {
     const e = live.e;
-    const cls = `ent k-${e.kind}${e.ghost ? ' is-ghost' : ''}${e.down ? ' is-down' : ''}${this.breakable.has(live.id) ? ' is-breakable' : ''}`;
+    const cls = `ent k-${e.kind}${e.ghost ? ' is-ghost' : ''}${e.down ? ' is-down' : ''}${e.dim ? ' is-dim' : ''}${this.breakable.has(live.id) ? ' is-breakable' : ''}`;
     if (live.g.getAttribute('class') !== cls) live.g.setAttribute('class', cls);
   }
 
@@ -246,7 +246,7 @@ export class Stage {
       live.removing = false;
       live.e = e;
       // The tank level animates in place, so only whether there is one forces a redraw.
-      const { x: _x, y: _y, z: _z, fill, focus: _f, ...look } = e;
+      const { x: _x, y: _y, z: _z, fill, focus: _f, dim: _d, ...look } = e;
       const sig = JSON.stringify({ ...look, tank: fill !== undefined });
       if (sig !== live.sig) {
         const grew = prev?.kind === 'server' && e.kind === 'server' && (e.count ?? 0) > (prev.count ?? 0);
@@ -316,7 +316,7 @@ export class Stage {
     this.update(this.dur ? 0 : Infinity);
 
     this.manual = false;
-    const target = this.targetView(!opts.jumpCamera);
+    const target = this.targetView(!opts.jumpCamera, scene.camera);
     if (opts.jumpCamera || !this.dur) {
       this.cam = null;
       this.view = target;
@@ -416,7 +416,7 @@ export class Stage {
 
   fit() {
     this.manual = false;
-    this.animateView(this.targetView(false), 500);
+    this.animateView(this.targetView(false, this.scene?.camera), 500);
   }
 
   private tick = (now: number) => {
@@ -679,13 +679,14 @@ export class Stage {
 
   // ── camera ─────────────────────────────────────────────────
 
-  private targetBounds(): Box | null {
+  private targetBounds(focus?: string[], pad = PAD): Box | null {
+    const wanted = focus?.length ? new Set(focus) : null;
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
     let y1 = -Infinity;
     for (const e of this.ents.values()) {
-      if (e.removing) continue;
+      if (e.removing || (wanted && !wanted.has(e.id))) continue;
       const bb = e.inner.getBBox();
       const [ax, ay] = project(e.to.x, e.to.y, e.to.z);
       x0 = Math.min(x0, ax + bb.x);
@@ -693,17 +694,20 @@ export class Stage {
       x1 = Math.max(x1, ax + bb.x + bb.width);
       y1 = Math.max(y1, ay + bb.y + bb.height);
     }
-    if (x0 === Infinity) return null;
-    return { x: x0 - PAD, y: y0 - PAD, w: x1 - x0 + PAD * 2, h: y1 - y0 + PAD * 2 };
+    if (x0 === Infinity) return wanted ? this.targetBounds(undefined, pad) : null;
+    return { x: x0 - pad, y: y0 - pad, w: x1 - x0 + pad * 2, h: y1 - y0 + pad * 2 };
   }
 
-  private targetView(sticky: boolean): Box {
-    const b = this.targetBounds() ?? this.view;
-    const w = Math.max(MIN_W, b.w);
-    const h = Math.max(MIN_H, b.h);
+  private targetView(sticky: boolean, camera?: Scene['camera']): Box {
+    const hasFocus = !!camera?.focus?.length;
+    const b = this.targetBounds(camera?.focus, camera?.pad ?? (hasFocus ? PAD * 1.3 : PAD)) ?? this.view;
+    const minW = hasFocus ? 380 : MIN_W;
+    const minH = hasFocus ? 230 : MIN_H;
+    const w = Math.max(minW, b.w);
+    const h = Math.max(minH, b.h);
     const target = { x: b.x - (w - b.w) / 2, y: b.y - (h - b.h) / 2, w, h };
     // Keep the camera still if the new scene already fits and the view isn't much too wide.
-    if (sticky && contains(this.view, b) && this.view.w * this.view.h < target.w * target.h * 1.5) return { ...this.view };
+    if (sticky && !hasFocus && contains(this.view, b) && this.view.w * this.view.h < target.w * target.h * 1.5) return { ...this.view };
     return target;
   }
 

@@ -39,6 +39,8 @@ export interface Entity {
    * sets it, the entities added or changed by the step glow instead.
    */
   focus?: boolean;
+  /** Softly dims this entity when the spotlight is elsewhere. */
+  dim?: boolean;
   /** Card title and monospace lines. Prefix a line with `! `, `✓ `, `# ` or `> ` to colour/highlight it. */
   title?: string;
   lines?: string[];
@@ -79,10 +81,18 @@ export interface Flow {
   once?: number;
 }
 
+export interface CameraTarget {
+  /** Entity ids to frame; when omitted, frames the whole scene. */
+  focus?: string[];
+  /** Extra padding around the framed bounds in SVG units. */
+  pad?: number;
+}
+
 export interface Scene {
   entities: Record<string, Entity>;
   links?: Record<string, Link>;
   flows?: Flow[];
+  camera?: CameraTarget;
 }
 
 /** One micro-animation keyframe inside a step, patched over `step.scene`. */
@@ -99,6 +109,8 @@ export interface SceneBeat {
   flows?: Flow[];
   /** Metric overrides for this beat (carried across earlier beats in the same step). */
   metrics?: Record<string, MetricValue>;
+  /** Optional camera framing override for this beat. */
+  camera?: CameraTarget;
 }
 
 export type Chapter = 'setup' | 'problem' | 'technique' | 'solution' | 'tradeoff' | 'insight' | 'recap';
@@ -111,6 +123,15 @@ export interface ChaosEffect {
   text: string;
   /** Metric values that replace the step's while the entity is broken. */
   metrics?: Record<string, MetricValue>;
+}
+
+/** A short prediction prompt shown before revealing a surprising step. */
+export interface PredictQuestion {
+  question: string;
+  options: string[];
+  /** Zero-based index of the correct option. */
+  answer: number;
+  explain: string;
 }
 
 export interface Step {
@@ -127,6 +148,8 @@ export interface Step {
    * Metric changes are listed automatically.
    */
   changes?: string[];
+  /** Optional active-recall question before revealing this step's scene. */
+  predict?: PredictQuestion;
   /** Entities the reader may break on this step, keyed by entity id. */
   chaos?: Record<string, ChaosEffect>;
   /** Optional sequence of micro-animation keyframes inside this step. */
@@ -163,6 +186,11 @@ export interface LessonOverlay {
     body?: string[];
     callout?: string;
     changes?: string[];
+    predict?: {
+      question?: string;
+      options?: string[];
+      explain?: string;
+    };
     /** Chaos texts keyed by entity id. */
     chaos?: Record<string, string>;
   } | null)[];
