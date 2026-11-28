@@ -7,6 +7,7 @@ const en = {
     hideSidebar: 'Hide course sidebar',
     showSidebar: 'Show course sidebar',
     wide: 'Wide',
+    studio: 'Studio',
     soon: 'soon',
   },
   theme: { toggle: 'Toggle dark mode' },
@@ -77,6 +78,16 @@ const en = {
   glossary: {
     openLesson: 'Lesson: {title}',
     stageList: 'Terms in this step',
+  },
+  studio: {
+    waterfall: 'Timeline waterfall',
+    total: 'total',
+    presenter: 'Presenter console',
+    sync: 'Live sync (?record=1)',
+    timerStart: 'Start timer',
+    timerPause: 'Pause timer',
+    timerReset: 'Reset',
+    beats: 'Beat cues',
   },
 } as const;
 

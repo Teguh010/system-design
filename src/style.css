@@ -86,6 +86,74 @@
   color-scheme: dark;
 }
 
+[data-studio='1'] {
+  --paper: #090e1a;
+  --paper-2: #101726;
+  --card: #121b2d;
+  --ink: #e8eefc;
+  --muted: #8ea0bf;
+  --line: #233354;
+  --edge: #050811;
+  --shade: #000;
+  --grid: #1e2d4d;
+
+  --k-server: #243e66;
+  --k-service: #2c3548;
+  --k-db: #1c473b;
+  --k-cache: #4f351e;
+  --k-lb: #372b61;
+  --k-queue: #54242f;
+  --k-worker: #1a474b;
+  --k-user: #3c2f47;
+  --k-cdn: #164459;
+  --k-client: #29354d;
+  --k-tree: #352b57;
+  --k-stack: #3d3724;
+  --screen: #4f7cff;
+
+  --p-req: #60a5fa;
+  --p-res: #34d399;
+  --p-slow: #fbbf24;
+  --p-write: #c084fc;
+  --p-fail: #fb7185;
+  --p-poison: #f472b6;
+  --p-ping: #94a3b8;
+
+  --good: #34d399;
+  --bad: #fb7185;
+  --warn: #fbbf24;
+  --info: #60a5fa;
+  --glow: #38bdf8;
+
+  color-scheme: dark;
+}
+
+[data-studio='1'] .stage::before {
+  background:
+    radial-gradient(48% 52% at 50% 52%, color-mix(in oklab, var(--info) 12%, transparent), transparent 72%),
+    radial-gradient(32% 36% at 75% 30%, color-mix(in oklab, var(--good) 9%, transparent), transparent 70%);
+}
+
+[data-studio='1'] .stage-card,
+[data-studio='1'] .metric {
+  border-width: 1px;
+  border-color: var(--line);
+}
+
+[data-studio='1'] .card-bg {
+  stroke: var(--line);
+  fill: rgba(18, 27, 45, 0.94);
+}
+
+[data-studio='1'] .link path {
+  stroke: #4b6189;
+  opacity: 0.72;
+}
+
+[data-studio='1'] .arrow-head {
+  fill: #647da8;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2085,6 +2153,31 @@ a.lesson-card:hover {
 .pkt-poison { fill: var(--p-poison); }
 .pkt-ping { fill: var(--p-ping); }
 
+.pkt-pill {
+  pointer-events: none;
+}
+
+.pkt-pill rect {
+  fill: var(--card);
+  stroke: var(--pkt-c, var(--info));
+  stroke-width: 1.1;
+}
+
+.pkt-pill text {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--pkt-c, var(--info));
+}
+
+.pkt-pill.pkt-req { --pkt-c: var(--p-req); }
+.pkt-pill.pkt-res { --pkt-c: var(--p-res); }
+.pkt-pill.pkt-slow { --pkt-c: var(--p-slow); }
+.pkt-pill.pkt-write { --pkt-c: var(--p-write); }
+.pkt-pill.pkt-fail { --pkt-c: var(--p-fail); }
+.pkt-pill.pkt-poison { --pkt-c: var(--p-poison); }
+.pkt-pill.pkt-ping { --pkt-c: var(--p-ping); }
+
 .fx line {
   stroke: var(--p-fail);
   stroke-width: 2.6;
@@ -2561,4 +2654,322 @@ a.lesson-card:hover {
 .is-record .sw {
   width: 13px;
   height: 13px;
+}
+
+.is-record .stage-foot {
+  justify-content: space-between;
+}
+
+.record-beat {
+  font-family: var(--mono);
+  font-size: clamp(11px, 0.95vw, 15px);
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  color: var(--ink);
+}
+
+/* ── Studio Dock: synchronized waterfall & runtime inspector ── */
+
+.studio-dock {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  padding: 10px 14px 4px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in oklab, var(--paper-2) 65%, var(--card));
+}
+
+.wf-panel,
+.insp-panel {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-family: var(--mono);
+}
+
+.wf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.wf-title,
+.insp-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.wf-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.wf-bar {
+  display: flex;
+  gap: 3px;
+  height: 22px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--paper-2);
+  padding: 2px;
+}
+
+.wf-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: color-mix(in oklab, var(--seg-c, var(--info)) 28%, var(--paper-2));
+  color: var(--seg-c, var(--info));
+  border: 1px solid color-mix(in oklab, var(--seg-c, var(--info)) 55%, transparent);
+  transition: flex-grow 0.35s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.wf-seg.is-active {
+  background: color-mix(in oklab, var(--seg-c, var(--info)) 42%, var(--card));
+  border-color: var(--seg-c, var(--info));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--seg-c, var(--info)) 45%, transparent);
+}
+
+.wf-seg.tone-good, .wf-item.tone-good { --seg-c: var(--good); }
+.wf-seg.tone-warn, .wf-item.tone-warn { --seg-c: var(--warn); }
+.wf-seg.tone-bad,  .wf-item.tone-bad  { --seg-c: var(--bad); }
+.wf-seg.tone-info, .wf-item.tone-info { --seg-c: var(--info); }
+
+.wf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.wf-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.wf-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--seg-c, var(--info));
+}
+
+.wf-item.is-active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.wf-item b {
+  color: var(--ink);
+}
+
+.insp-title {
+  margin-bottom: 6px;
+}
+
+.insp-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.insp-line {
+  padding: 2px 6px;
+  border-radius: 5px;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+.insp-line.is-active {
+  background: color-mix(in oklab, var(--info) 18%, transparent);
+  border-left: 2.5px solid var(--info);
+  color: var(--info);
+  font-weight: 700;
+}
+
+.insp-line.is-good { color: var(--good); }
+.insp-line.is-bad  { color: var(--bad); font-weight: 600; }
+.insp-line.is-muted { color: var(--muted); }
+
+/* ── Presenter Console (?presenter=1) ── */
+
+.presenter-shell {
+  padding: 20px 28px;
+  max-width: 1320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pres-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pres-eyebrow {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--info);
+  margin-bottom: 4px;
+}
+
+.pres-head h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pres-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pres-clock {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.pres-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.pres-script,
+.pres-cues {
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+
+.pres-step-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.pres-body p {
+  font-size: 18px;
+  line-height: 1.65;
+  margin: 0 0 14px;
+}
+
+.pres-cues-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pres-cues-head h2 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.pres-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.pres-beat-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pres-beat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.pres-beat span {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.pres-beat.is-active {
+  border-color: var(--info);
+  background: color-mix(in oklab, var(--info) 18%, var(--card));
+}
+
+.pres-beat.is-active span {
+  background: var(--info);
+  color: #08101e;
+  border-color: var(--info);
+}
+
+.pres-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pres-note {
+  margin: 12px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
 }

@@ -9,6 +9,7 @@ const id = {
     hideSidebar: 'Sembunyikan sidebar kursus',
     showSidebar: 'Tampilkan sidebar kursus',
     wide: 'Lebar',
+    studio: 'Studio',
     soon: 'segera',
   },
   theme: { toggle: 'Ganti mode gelap' },
@@ -79,6 +80,16 @@ const id = {
   glossary: {
     openLesson: 'Lihat: {title}',
     stageList: 'Istilah di step ini',
+  },
+  studio: {
+    waterfall: 'Timeline waterfall',
+    total: 'total',
+    presenter: 'Konsol Presenter',
+    sync: 'Sinkron (?record=1)',
+    timerStart: 'Mulai timer',
+    timerPause: 'Jeda timer',
+    timerReset: 'Reset',
+    beats: 'Cue momen',
   },
 } satisfies UiMessages;
 

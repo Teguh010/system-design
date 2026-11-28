@@ -49,6 +49,9 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
     ...s,
     entities: Object.fromEntries(Object.entries(s.entities).map(([k, e]) => [k, entity(e)])),
     ...(s.links && { links: Object.fromEntries(Object.entries(s.links).map(([k, l]) => [k, l.label ? { ...l, label: tr(l.label)! } : l])) }),
+    ...(s.flows && { flows: s.flows.map((f) => (f.label ? { ...f, label: tr(f.label)! } : f)) }),
+    ...(s.waterfall && { waterfall: s.waterfall.map((w) => ({ ...w, label: tr(w.label)! })) }),
+    ...(s.inspector && { inspector: { title: tr(s.inspector.title)!, lines: s.inspector.lines.map(line) } }),
   });
   const beat = (b: SceneBeat): SceneBeat => ({
     ...b,
@@ -59,7 +62,10 @@ export function applyLessonOverlay(lesson: Lesson, o: LessonOverlay): Lesson {
     ...(b.links && {
       links: Object.fromEntries(Object.entries(b.links).map(([k, l]) => [k, l ? (l.label ? { ...l, label: tr(l.label)! } : l) : null])),
     }),
+    ...(b.flows && { flows: b.flows.map((f) => (f.label ? { ...f, label: tr(f.label)! } : f)) }),
     ...(b.metrics && { metrics: Object.fromEntries(Object.entries(b.metrics).map(([k, v]) => [k, metric(v)])) }),
+    ...(b.waterfall && { waterfall: b.waterfall.map((w) => ({ ...w, label: tr(w.label)! })) }),
+    ...(b.inspector && { inspector: { title: tr(b.inspector.title)!, lines: b.inspector.lines.map(line) } }),
   });
 
   return {

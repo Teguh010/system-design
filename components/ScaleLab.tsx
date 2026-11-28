@@ -11,7 +11,7 @@ import { getPathname } from '../src/i18n/navigation';
 import { lb, link, server, spread, users } from '../src/lessons/helpers';
 import { resolveBeat } from '../src/lessons/beats';
 import { labFor, type Lab } from '../src/lessons/labs';
-import type { Lesson, MetricValue, Scene, Step } from '../src/types';
+import type { InspectorPanel, Lesson, MetricValue, Scene, Step, WaterfallSegment } from '../src/types';
 import { currentTheme, load, markVisited, save, setLastStep, setTheme } from '../src/ui/store';
 import { glossaryAbbrevLabel, glossaryExpansion, glossaryInProse } from '../src/glossary/enrich.ts';
 import { GlossaryHtml, GlossaryPlain, GlossaryScope } from './Glossary';
@@ -145,6 +145,14 @@ function useRecordMode() {
     return () => document.documentElement.classList.remove('is-record');
   }, []);
   return record;
+}
+
+function usePresenterMode() {
+  const [presenter, setPresenter] = useState(false);
+  useEffect(() => {
+    setPresenter(new URLSearchParams(window.location.search).get('presenter') === '1');
+  }, []);
+  return presenter;
 }
 
 type Num = { pre: string; n: number; dec: number; grouped: boolean; post: string };
@@ -285,6 +293,138 @@ function PredictCard({ predict, choice, onPick, onSkip }: {
   </div>;
 }
 
+function formatDuration(ms: number, locale: Locale): string {
+  const tag = locale === 'id' ? 'id-ID' : 'en-US';
+  if (ms >= 1000) {
+    const s = new Intl.NumberFormat(tag, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ms / 1000);
+    return locale === 'id' ? `${s} dtk` : `${s} s`;
+  }
+  return `${new Intl.NumberFormat(tag).format(Math.round(ms))} ms`;
+}
+
+function StudioDock({ waterfall, inspector, locale }: {
+  waterfall: WaterfallSegment[] | undefined; inspector: InspectorPanel | undefined; locale: Locale;
+}) {
+  const t = useTranslations();
+  if (!waterfall?.length && !inspector) return null;
+  const totalMs = (waterfall ?? []).reduce((sum, s) => sum + Math.max(0, s.ms), 0);
+  return <div className="studio-dock">
+    {waterfall && waterfall.length > 0 && (
+      <div className="wf-panel">
+        <div className="wf-head">
+          <span className="wf-title">{t('studio.waterfall')}</span>
+          <span className="wf-total">{formatDuration(totalMs, locale)} {t('studio.total')}</span>
+        </div>
+        <div className="wf-bar" role="img" aria-label={t('studio.waterfall')}>
+          {waterfall.map((seg, i) => {
+            const pct = totalMs > 0 ? (Math.max(0, seg.ms) / totalMs) * 100 : 100 / waterfall.length;
+            return <div key={i} className={`wf-seg tone-${seg.tone ?? 'info'}${seg.active ? ' is-active' : ''}`} style={{ flexGrow: Math.max(0.06, seg.ms || 1), flexBasis: `${pct.toFixed(1)}%` }} title={`${seg.label}: ${formatDuration(seg.ms, locale)}`}>
+              <span>{seg.label}</span>
+            </div>;
+          })}
+        </div>
+        <div className="wf-legend">
+          {waterfall.map((seg, i) => (
+            <span key={i} className={`wf-item tone-${seg.tone ?? 'info'}${seg.active ? ' is-active' : ''}`}>
+              <i />{seg.label} <b>{formatDuration(seg.ms, locale)}</b>
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
+    {inspector && (
+      <div className="insp-panel">
+        <div className="insp-title">{inspector.title}</div>
+        <div className="insp-lines">
+          {inspector.lines.map((raw, i) => {
+            const tone = raw.startsWith('! ') ? 'bad' : raw.startsWith('✓ ') ? 'good' : raw.startsWith('# ') ? 'muted' : raw.startsWith('> ') ? 'active' : '';
+            const text = tone ? raw.slice(2) : raw;
+            return <div key={i} className={`insp-line${tone ? ` is-${tone}` : ''}`}>{text}</div>;
+          })}
+        </div>
+      </div>
+    )}
+  </div>;
+}
+
+type StudioMsg =
+  | { type: 'state'; lessonId: string; step: number; beatIndex: number; paused: boolean }
+  | { type: 'replay' };
+
+function PresenterConsole({ lesson, locale, index, beatIndex, paused, onNav, onStepBeat, onSelectBeat, onTogglePause, onReplay }: {
+  lesson: Lesson; locale: Locale; index: number; beatIndex: number; paused: boolean;
+  onNav: (delta: number) => void; onStepBeat: (delta: number) => void; onSelectBeat: (i: number) => void;
+  onTogglePause: () => void; onReplay: () => void;
+}) {
+  const t = useTranslations();
+  const current = lesson.steps[index]!;
+  const beats = current.beats ?? [];
+  const [running, setRunning] = useState(false);
+  const [sec, setSec] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setSec((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+  const ss = String(sec % 60).padStart(2, '0');
+  return <div className="presenter-shell">
+    <header className="pres-head">
+      <div>
+        <span className="pres-eyebrow">{t('studio.presenter')} · {t('studio.sync')}</span>
+        <h1>{lesson.title} — {t('step.label', { i: index + 1, n: lesson.steps.length })}</h1>
+      </div>
+      <div className="pres-timer">
+        <span className="pres-clock">{mm}:{ss}</span>
+        <button type="button" className="btn small" onClick={() => setRunning((r) => !r)}>{running ? t('studio.timerPause') : t('studio.timerStart')}</button>
+        <button type="button" className="btn small" onClick={() => { setRunning(false); setSec(0); }}>{t('studio.timerReset')}</button>
+      </div>
+    </header>
+    <div className="pres-grid">
+      <section className="pres-script">
+        <div className="pres-step-title">{current.title}</div>
+        <div className="pres-body">
+          {current.body.map((p, i) =>
+            p.trimStart().startsWith('<table')
+              ? <div key={i} dangerouslySetInnerHTML={{ __html: p }} />
+              : <p key={i} dangerouslySetInnerHTML={{ __html: p }} />,
+          )}
+        </div>
+        {current.callout && <aside className={`callout co-${current.callout.kind}`}><b>{t(`callout.${current.callout.kind}`)}</b><span>{current.callout.text}</span></aside>}
+      </section>
+      <aside className="pres-cues">
+        <div className="pres-cues-head">
+          <h2>{t('studio.beats')}</h2>
+          <div className="pres-btns">
+            <button type="button" className="btn small" onClick={onReplay}>↻ {t('stage.replay')}</button>
+            <button type="button" className="btn small" onClick={onTogglePause}>{paused ? `▶ ${t('stage.play')}` : `❚❚ ${t('stage.pause')}`}</button>
+          </div>
+        </div>
+        {beats.length > 0 ? (
+          <ol className="pres-beat-list">
+            {beats.map((b, i) => (
+              <li key={i}>
+                <button type="button" className={`pres-beat${i === beatIndex ? ' is-active' : i < beatIndex ? ' is-done' : ''}`} onClick={() => onSelectBeat(i)}>
+                  <span>{i + 1}</span><b>{b.label ?? t('stage.beatOf', { i: i + 1, n: beats.length })}</b>
+                </button>
+              </li>
+            ))}
+          </ol>
+        ) : <p className="pres-empty">—</p>}
+        <div className="pres-nav">
+          <button type="button" className="btn" disabled={index === 0} onClick={() => onNav(-1)}>← {t('step.back')}</button>
+          <button type="button" className="btn" disabled={!beats.length || beatIndex === 0} onClick={() => onStepBeat(-1)}>↑ {t('stage.prevBeat')}</button>
+          <button type="button" className="btn primary" disabled={!beats.length || beatIndex >= beats.length - 1} onClick={() => onStepBeat(1)}>↓ {t('stage.nextBeat')}</button>
+          <button type="button" className="btn primary" disabled={index >= lesson.steps.length - 1} onClick={() => onNav(1)}>
+            {lesson.steps[index + 1] ? `${t('step.nextTo', { short: lesson.steps[index + 1]!.short })} →` : `${t('step.finish')} ✓`}
+          </button>
+        </div>
+        <p className="pres-note">{locale === 'id' ? 'Buka tab lain dengan ?record=1 untuk menangkap visualisasi layar penuh.' : 'Open a second window with ?record=1 to capture the clean visualization.'}</p>
+      </aside>
+    </div>
+  </div>;
+}
+
 function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress, onStepNavigation, onToggleSidebar }: {
   lesson: Lesson; place: Place; locale: Locale; step: number; progress: Progress; wide: boolean; onProgress: () => void; onStepNavigation: () => void; onToggleSidebar: () => void;
 }) {
@@ -295,6 +435,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   const firstStep = useRef(true);
   const stepCard = useRef<HTMLDivElement>(null);
   const record = useRecordMode();
+  const presenter = usePresenterMode();
   const [paused, setPaused] = useState(false);
   const [activeStep, setActiveStep] = useState(step);
   const index = Math.max(0, Math.min(lesson.steps.length - 1, Number.isFinite(activeStep) ? Math.trunc(activeStep) - 1 : 0));
@@ -305,7 +446,7 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
   const [predictions, setPredictions] = useState<Record<string, number>>(() => load<Record<string, number>>('predict', {}));
   const predictKey = `${lesson.id}:${index}`;
   const predictChoice = current.predict ? predictions[predictKey] : undefined;
-  const gated = !!current.predict && predictChoice === undefined && !wide && !record;
+  const gated = !!current.predict && predictChoice === undefined && !wide && !record && !presenter;
   const displayIndex = gated && index > 0 ? index - 1 : index;
   const displayStep = lesson.steps[displayIndex]!;
   const values = valuesAt(lesson, displayIndex);
@@ -399,22 +540,73 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     if (next >= n) router.push(homePath(locale));
     else if (next >= 0) goToStep(next + 1);
   }, [index, n, router, locale, goToStep]);
+  const channel = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined' || (!presenter && !record)) return;
+    const ch = new BroadcastChannel('scale-lab-studio');
+    channel.current = ch;
+    if (record) {
+      ch.onmessage = (ev: MessageEvent<StudioMsg>) => {
+        const msg = ev.data;
+        if (msg.type === 'replay') {
+          setBeatIndex(0);
+          if (stage.current?.isPaused) {
+            stage.current.setPaused(false);
+            setPaused(false);
+          }
+          stage.current?.replay();
+          return;
+        }
+        if (msg.type === 'state') {
+          if (msg.lessonId !== lesson.id) {
+            router.push(lessonPath(locale, msg.lessonId, msg.step) + window.location.search);
+            return;
+          }
+          if (msg.step !== index + 1) goToStep(msg.step);
+          setBeatIndex(msg.beatIndex);
+          if (stage.current && stage.current.isPaused !== msg.paused) {
+            stage.current.setPaused(msg.paused);
+            setPaused(msg.paused);
+          }
+        }
+      };
+    }
+    return () => {
+      channel.current = null;
+      ch.close();
+    };
+  }, [presenter, record, lesson.id, locale, router, index, goToStep]);
+
+  useEffect(() => {
+    if (!presenter) return;
+    channel.current?.postMessage({ type: 'state', lessonId: lesson.id, step: index + 1, beatIndex, paused } satisfies StudioMsg);
+  }, [presenter, lesson.id, index, beatIndex, paused]);
+
   const togglePause = useCallback(() => {
+    if (presenter) {
+      setPaused((p) => !p);
+      return;
+    }
     const instance = stage.current;
     if (!instance) return;
     const next = !instance.isPaused;
     instance.setPaused(next);
     setPaused(next);
     if (!next && hasBeats && beatIndex >= beats.length - 1) setBeatIndex(0);
-  }, [hasBeats, beatIndex, beats.length]);
+  }, [presenter, hasBeats, beatIndex, beats.length]);
   const replay = useCallback(() => {
     setBeatIndex(0);
+    if (presenter) {
+      setPaused(false);
+      channel.current?.postMessage({ type: 'replay' } satisfies StudioMsg);
+      return;
+    }
     if (stage.current?.isPaused) {
       stage.current.setPaused(false);
       setPaused(false);
     }
     stage.current?.replay();
-  }, []);
+  }, [presenter]);
   const stepBeat = useCallback((delta: number) => {
     if (!hasBeats) return;
     setBeatIndex((i) => Math.max(0, Math.min(beats.length - 1, i + delta)));
@@ -453,6 +645,21 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [nav, togglePause, replay, stepBeat, hasBeats, onToggleSidebar, gated, current.predict, answerPredict]);
+  if (presenter) {
+    return <PresenterConsole
+      lesson={lesson}
+      locale={locale}
+      index={index}
+      beatIndex={beatIndex}
+      paused={paused}
+      onNav={nav}
+      onStepBeat={stepBeat}
+      onSelectBeat={setBeatIndex}
+      onTogglePause={togglePause}
+      onReplay={replay}
+    />;
+  }
+
   return <GlossaryScope locale={locale} className="lesson">
     <section className={`center${showLab || canBreak ? ' has-play' : ''}`}>
       <header className="l-head"><div className="crumbs"><Link href={homePath(locale)}>{pad2(place.moduleIndex + 1)}. {place.module.title[locale]}</Link><span>/</span>{t('lesson.of', { i: place.lessonIndex + 1, n: place.module.lessons.length })}</div>
@@ -484,7 +691,13 @@ function LessonScreen({ lesson, place, locale, step, progress, wide, onProgress,
           </ul>
         )}
       </div>
-      <div className="stage-foot"><span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span></div></div>
+      <StudioDock waterfall={stageScene.waterfall} inspector={stageScene.inspector} locale={locale} />
+      <div className="stage-foot">
+        {record && (resolved.beat?.label || displayStep.short) && (
+          <span className="record-beat">{displayStep.short}{resolved.beat?.label ? ` · ${resolved.beat.label}` : ''}</span>
+        )}
+        <span className={`stage-hint${canBreak ? ' is-chaos' : ''}`}>{canBreak ? t('chaos.hint') : t('stage.hint')}</span>
+      </div></div>
       {showLab && labResult && <LabCard lab={lab} locale={locale} values={labValues} note={labResult.note} onChange={(id, v) => setLabValues((s) => ({ ...s, [id]: v }))} onReset={() => setLabValues(defaults)} />}
       {canBreak && <ChaosCard step={current} broken={broken} onToggle={toggleBroken} onRepair={() => setBroken([])} />}
       <div className="timeline-card"><div className="tl-head"><span>{t('lesson.timeline')}</span><span className="tl-count">{t('lesson.stepOf', { i: index + 1, n })}</span></div><ol className="timeline" ref={timeline}>{lesson.steps.map((s, i) => <li key={i}><Link href={lessonPath(locale, lesson.id, i + 1)} onClick={(event) => onStepLink(event, i + 1)} data-i={i} className={`${i === index ? 'is-current' : ''}${seen.has(i) ? ' is-seen' : ''}`} aria-current={i === index ? 'step' : undefined}><span className="tl-dot">{i + 1}</span><span className="tl-label">{s.short}</span></Link></li>)}</ol></div>
@@ -539,6 +752,7 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [navOpen, setNavOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
+  const [studio, setStudio] = useState(false);
   const refreshProgress = useCallback(() => setProgress(readProgress()), []);
   const closeNav = useCallback(() => setNavOpen(false), []);
   const toggleSidebar = useCallback(() => {
@@ -548,13 +762,26 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
       return next;
     });
   }, []);
+  const toggleStudio = useCallback(() => {
+    setStudio((prev) => {
+      const next = !prev;
+      save('studio', next);
+      return next;
+    });
+  }, []);
   const found = lessonId ? findInCourse(lessonId) : undefined;
   useEffect(() => {
     refreshProgress();
     setNavHidden(load('navHidden', false));
+    const params = new URLSearchParams(window.location.search);
+    const forceStudio = params.get('studio') === '1' || params.get('record') === '1' || params.get('presenter') === '1';
+    setStudio(forceStudio || load('studio', false));
     const saved = load<'light' | 'dark' | null>('theme', null);
     document.documentElement.dataset.theme = saved === 'dark' || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   }, [refreshProgress]);
+  useEffect(() => {
+    document.documentElement.dataset.studio = studio ? '1' : '0';
+  }, [studio]);
   useEffect(() => {
     save('lang', locale);
   }, [locale]);
@@ -585,7 +812,7 @@ export default function ScaleLab({ locale, lessonId, step = 1, lesson }: { local
     <header className="top"><button className="icon-btn menu" type="button" aria-label={t('nav.menu')} aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>☰</button>
       <button className={`icon-btn sidebar-toggle${navHidden ? ' is-on' : ''}`} type="button" title={`${navHidden ? t('nav.showSidebar') : t('nav.hideSidebar')} ([)`} aria-label={navHidden ? t('nav.showSidebar') : t('nav.hideSidebar')} aria-pressed={navHidden} onClick={toggleSidebar}><svg viewBox="0 0 18 16" width="15" height="13" aria-hidden="true"><rect x="1" y="1.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" /><line x1="6.5" y1="1.5" x2="6.5" y2="14.5" stroke="currentColor" strokeWidth="1.5" /></svg><span>{t('nav.wide')}</span></button>
       <Link className="brand" href={homePath(locale)}><svg viewBox="0 0 28 28" width="22" height="22" aria-hidden="true"><polygon points="14,3 25,8.5 14,14 3,8.5" className="logo-top" /><polygon points="3,8.5 14,14 14,25 3,19.5" className="logo-l" /><polygon points="25,8.5 14,14 14,25 25,19.5" className="logo-r" /></svg>Scale Lab</Link>
-      <div className="top-right"><div className="lang" role="group" aria-label={t('lang.label')}>{LOCALES.map((l) => <button key={l.id} type="button" title={l.name} aria-pressed={l.id === locale} onClick={() => switchLocale(l.id)}>{l.short}</button>)}</div><button className="icon-btn theme" type="button" title={t('theme.toggle')} aria-label={t('theme.toggle')} onClick={() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark')}>◐</button></div>
+      <div className="top-right"><button className={`btn small studio-toggle${studio ? ' is-on' : ''}`} type="button" aria-pressed={studio} onClick={toggleStudio}>✦ {t('nav.studio')}</button><div className="lang" role="group" aria-label={t('lang.label')}>{LOCALES.map((l) => <button key={l.id} type="button" title={l.name} aria-pressed={l.id === locale} onClick={() => switchLocale(l.id)}>{l.short}</button>)}</div><button className="icon-btn theme" type="button" title={t('theme.toggle')} aria-label={t('theme.toggle')} onClick={() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark')}>◐</button></div>
     </header>
     <div className={`shell${navHidden ? ' is-nav-hidden' : ''}`}><Sidebar locale={locale} currentId={lesson?.id} progress={progress} /><div className="nav-scrim" onClick={closeNav} /><main id="view">{lesson && found ? <LessonScreen key={`${locale}/${lesson.id}`} lesson={lesson} place={found} locale={locale} step={step} progress={progress} wide={navHidden} onProgress={refreshProgress} onStepNavigation={closeNav} onToggleSidebar={toggleSidebar} /> : <Home locale={locale} progress={progress} />}</main></div>
   </>;

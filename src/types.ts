@@ -68,6 +68,8 @@ export interface Flow {
   /** Link ids travelled in order. Prefix an id with `~` to travel it backwards. */
   route: string[];
   kind?: PacketKind;
+  /** Optional short tag riding beside the packet (e.g. 'DNS', 'GET', 'SQL'). */
+  label?: string;
   /** Packets per second. */
   rate: number;
   /** Travel back along the route after arriving. */
@@ -88,11 +90,27 @@ export interface CameraTarget {
   pad?: number;
 }
 
+export interface WaterfallSegment {
+  label: string;
+  ms: number;
+  tone?: Tone;
+  active?: boolean;
+}
+
+export interface InspectorPanel {
+  title: string;
+  lines: string[];
+}
+
 export interface Scene {
   entities: Record<string, Entity>;
   links?: Record<string, Link>;
   flows?: Flow[];
   camera?: CameraTarget;
+  /** Proportional timing breakdown rendered in the Studio HUD. */
+  waterfall?: WaterfallSegment[];
+  /** Synchronized runtime/code/query inspector rendered alongside the stage. */
+  inspector?: InspectorPanel;
 }
 
 /** One micro-animation keyframe inside a step, patched over `step.scene`. */
@@ -111,6 +129,10 @@ export interface SceneBeat {
   metrics?: Record<string, MetricValue>;
   /** Optional camera framing override for this beat. */
   camera?: CameraTarget;
+  /** Optional waterfall timeline override for this beat. */
+  waterfall?: WaterfallSegment[];
+  /** Optional inspector panel override for this beat. */
+  inspector?: InspectorPanel;
 }
 
 export type Chapter = 'setup' | 'problem' | 'technique' | 'solution' | 'tradeoff' | 'insight' | 'recap';

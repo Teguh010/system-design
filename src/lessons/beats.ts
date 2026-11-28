@@ -51,12 +51,21 @@ export function resolveBeat(
     ...beats.slice(0, idx + 1).map((b) => b.metrics),
   );
 
+  let waterfall = step.scene.waterfall;
+  let inspector = step.scene.inspector;
+  for (const b of beats.slice(0, idx + 1)) {
+    if (b.waterfall !== undefined) waterfall = b.waterfall;
+    if (b.inspector !== undefined) inspector = b.inspector;
+  }
+
   const camera = beat.camera ?? step.scene.camera;
   const scene: Scene = {
     entities,
     ...(Object.keys(links).length > 0 && { links }),
     ...(beat.flows !== undefined ? { flows: beat.flows } : step.scene.flows ? { flows: step.scene.flows } : {}),
     ...(camera && { camera }),
+    ...(waterfall && { waterfall }),
+    ...(inspector && { inspector }),
   };
 
   return { scene, metrics, beat };

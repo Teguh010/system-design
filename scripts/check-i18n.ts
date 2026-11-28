@@ -33,6 +33,12 @@ for (const entry of allLessons) {
       e.lines?.forEach((l: string) => add(/^[!✓#>] /.test(l) ? l.slice(2) : l));
     }
     for (const l of Object.values<any>(s.scene.links ?? {})) add(l.label);
+    for (const f of s.scene.flows ?? []) add(f.label);
+    for (const w of s.scene.waterfall ?? []) add(w.label);
+    if (s.scene.inspector) {
+      add(s.scene.inspector.title);
+      s.scene.inspector.lines.forEach((l: string) => add(/^[!✓#>] /.test(l) ? l.slice(2) : l));
+    }
     for (const e of Object.values<any>(s.scene.entities)) add(e.meter?.label);
     for (const v of Object.values<any>(s.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
     for (const c of Object.values<any>(s.chaos ?? {}))
@@ -45,6 +51,12 @@ for (const entry of allLessons) {
         e.lines?.forEach((l: string) => add(/^[!✓#>] /.test(l) ? l.slice(2) : l));
       }
       for (const l of Object.values<any>(b.links ?? {})) if (l) add(l.label);
+      for (const f of b.flows ?? []) add(f.label);
+      for (const w of b.waterfall ?? []) add(w.label);
+      if (b.inspector) {
+        add(b.inspector.title);
+        b.inspector.lines.forEach((l: string) => add(/^[!✓#>] /.test(l) ? l.slice(2) : l));
+      }
       for (const v of Object.values<any>(b.metrics ?? {})) add(typeof v === 'string' ? v : v.v);
     }
   }

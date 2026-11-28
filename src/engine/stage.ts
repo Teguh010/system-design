@@ -62,6 +62,7 @@ interface Packet {
   back: boolean;
   el: SVGCircleElement;
   trail: SVGCircleElement[];
+  pill: SVGGElement | null;
 }
 
 interface Box {
@@ -569,12 +570,14 @@ export class Stage {
 
   private removePacket(p: Packet) {
     p.el.remove();
+    p.pill?.remove();
     for (const t of p.trail) t.remove();
   }
 
   private setPacketKind(p: Packet, kind: PacketKind) {
     p.kind = kind;
     p.el.setAttribute('class', `pkt pkt-${kind}`);
+    p.pill?.setAttribute('class', `pkt-pill pkt-${kind}`);
     for (const t of p.trail) t.setAttribute('class', `pkt-trail pkt-${kind}`);
   }
 
@@ -593,7 +596,14 @@ export class Stage {
       svg('circle', { r: (3.4 - j * 1).toFixed(1), class: `pkt-trail pkt-${kind}`, opacity: j ? 0.18 : 0.34, cx: -9999, cy: -9999 }, this.layers.packets),
     );
     const el = svg('circle', { r: 4.2, class: `pkt pkt-${kind}`, cx: -9999, cy: -9999 }, this.layers.packets);
-    this.packets.push({ flow, kind, segs, i: 0, d: 0, back: false, el, trail });
+    let pill: SVGGElement | null = null;
+    if (flow.label) {
+      const w = textWidth(flow.label, 9, 700) + 10;
+      pill = svg('g', { class: `pkt-pill pkt-${kind}`, transform: 'translate(-9999 -9999)' }, this.layers.fx);
+      svg('rect', { x: -w / 2, y: -7.5, width: w, height: 15, rx: 7.5 }, pill);
+      svg('text', { x: 0, y: 0, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, pill).textContent = flow.label;
+    }
+    this.packets.push({ flow, kind, segs, i: 0, d: 0, back: false, el, trail, pill });
     return true;
   }
 
@@ -655,6 +665,7 @@ export class Stage {
       const pt = pointAt(seg, p.d);
       p.el.setAttribute('cx', pt.x.toFixed(2));
       p.el.setAttribute('cy', pt.y.toFixed(2));
+      p.pill?.setAttribute('transform', `translate(${pt.x.toFixed(1)} ${(pt.y - 13).toFixed(1)})`);
       p.trail.forEach((t, j) => {
         const back = TRAIL[j]!;
         // Hide trail dots that would sit behind the start of the current segment.
